@@ -33,10 +33,10 @@ different numbers of viewpoints:
 | | Time scale | Viewpoints | What it does |
 |---|---|---|---|
 | `draft-learner` · `role-calibrator` · `save-feedback` | **Long-term**, accumulating across sessions | One | Learn the writer's style from their edits and feedback; calibrate tone to the writer's standing in each domain |
-| Core **Phase 5: Subject-rules Audit** | **Single letter**, right after the anti-pattern table | One, never the drafter, given the recipient's rule file and the draft | Find every entry of the recipient's rule file that this draft violates; the drafting agent decides, and any entry it leaves unchanged is shown to the writer |
+| Core **Phase 5: Subject-rules Audit** | **Single letter**, right after the anti-pattern table | One, never the drafter, given the recipient's rule file and the draft; runs as the plugin's own `rules-auditor` agent, which loads no `CLAUDE.md` | Find every entry of the recipient's rule file that this draft violates; the drafting agent decides, and any entry it leaves unchanged is shown to the writer |
 | Core **Phase 5c: Ensemble Review** | **Single letter**, just before it goes out | Many, mutually blind | Independently re-check *this* draft's facts, register, and action items |
 | Core **Phase 5d: Cross-model Polish** | **Single letter**, just before it goes out | One, but never the drafter | Rewrite *this* draft's prose without touching the facts it anchored |
-| Core **Phase 5e: Native-syntax Read** | **Single letter**, just before it goes out | One, never the drafter, and blind to where the text came from | Flag sentences whose word order a native writer of the output language would not produce; never rewrites |
+| Core **Phase 5e: Native-syntax Read** | **Single letter**, just before it goes out | One, never the drafter, and blind to where the text came from, your `CLAUDE.md` included; runs as the plugin's own `native-syntax-reader` agent | Flag sentences whose word order a native writer of the output language would not produce; never rewrites |
 | Core **Phase 5f: Smooth Pass** | **Single letter**, just before it goes out | One, never the drafter, given one plain sentence plus everything the drafting used | Produce an unconstrained smoothed candidate; it is adopted only if it passes the frozen-span and anti-pattern checks, and only after the writer has seen the diff |
 | Core **Phase 5g: Redundancy Trim** | **Single letter**, just before it goes out | The drafting agent itself, reading the Smooth Pass candidate as a hint | Delete or merge statements the letter already makes elsewhere; never adds anything, and the writer sees every cut with its reason |
 
@@ -78,7 +78,7 @@ pre-send check. Either plugin works alone; neither declares the other as a depen
 `plugins/perspective-writer/scripts/check-contract-consistency.sh` asserts that every skill agrees
 with the resolution contract: none constructs a storage path of its own, every contract section a
 skill cites exists, the reader-based split criterion still names its exceptions, and the published
-contract still names the three outcome statuses. It runs on push to `main`.
+contract still names the three outcome statuses. It also asserts that every agent under `agents/` carries exactly `omitClaudeMd: true`, declares read-only `tools`, and is dispatched by a skill: Claude Code ignores a frontmatter field it does not recognise without any error, so a misspelt `omitClaudeMd` would silently put the user's `CLAUDE.md` back into a reader that is supposed to be blind. It runs on push to `main`.
 
 It is deliberately **shape-agnostic** — no assertion counts or names skills. The skill set grew from
 four to five when the core/facet split landed and grows with each genre facet; assertions about

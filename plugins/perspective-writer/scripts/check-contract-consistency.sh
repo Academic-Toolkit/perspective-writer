@@ -101,6 +101,41 @@ for st in 'subject-specific' 'legacy' 'generic'; do
 done
 grep -qF 'subject-specific' "$README" && grep -qF 'generic' "$README" && ok "README names the outcome statuses"
 
+# --- 6. Blind-reader agents are actually isolated ---------------------------
+# The native-syntax reader and the rules auditor are only blind if their subagent does not
+# load the user's CLAUDE.md hierarchy. Claude Code ignores a frontmatter field it does not
+# recognise, without any error — so a misspelt `omitClaudeMd` leaves the agent loading every
+# CLAUDE.md and nothing anywhere says so. Same silent-failure shape as the rest of this file,
+# so it gets the same kind of check. Shape-agnostic: loops over whatever agents exist, counts none.
+#   (a) exact `omitClaudeMd: true` in the frontmatter
+#   (b) an explicit `tools:` line (omitting it inherits every tool) with nothing that writes
+#   (c) some skill dispatches it as perspective-writer:<name>, or it is dead weight
+AGENTS="$PLUGIN/agents"
+if [ -d "$AGENTS" ]; then
+  agents_ok=1
+  for agent in "$AGENTS"/*.md; do
+    [ -e "$agent" ] || continue
+    rel=${agent#"$ROOT"/}
+    fm=$(awk 'NR==1 && $0!="---"{exit} NR==1{next} $0=="---"{exit} {print}' "$agent")
+    aname=$(sed -n 's/^name:[[:space:]]*//p' <<<"$fm" | head -1)
+    atools=$(sed -n 's/^tools:[[:space:]]*//p' <<<"$fm" | head -1)
+    if ! grep -qE '^omitClaudeMd:[[:space:]]*true[[:space:]]*$' <<<"$fm"; then
+      bad "$rel: frontmatter lacks exactly 'omitClaudeMd: true' (a misspelling is ignored silently)"; agents_ok=0
+    fi
+    if [ -z "$atools" ]; then
+      bad "$rel: no 'tools:' line (an omitted tools field inherits every tool)"; agents_ok=0
+    elif grep -qiE '(^|[,[:space:]\[])(Bash|Edit|Write|NotebookEdit)([,[:space:]\]]|$)' <<<"$atools"; then
+      bad "$rel: a blind reader must be read-only, but tools: $atools"; agents_ok=0
+    fi
+    if [ -z "$aname" ]; then
+      bad "$rel: frontmatter has no name"; agents_ok=0
+    elif ! grep -rqF "perspective-writer:$aname" "$SKILLS"; then
+      bad "$rel: no skill dispatches perspective-writer:$aname"; agents_ok=0
+    fi
+  done
+  [ "$agents_ok" -eq 1 ] && ok "every plugin agent omits CLAUDE.md, is read-only, and is dispatched by a skill"
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "contract consistency: OK"

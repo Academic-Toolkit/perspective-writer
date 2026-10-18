@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.11.0] - 2026-10-19
+
+### Added
+- **`agents/native-syntax-reader.md`、`agents/rules-auditor.md`**：plugin 自帶的兩個唯讀 subagent，frontmatter 設 `omitClaudeMd: true`、`tools: Read`、`model: sonnet`。註冊名是 `perspective-writer:native-syntax-reader` 與 `perspective-writer:rules-auditor`。
+- `scripts/check-contract-consistency.sh` 第 6 組斷言：每個 agent 的 frontmatter 要有確切的 `omitClaudeMd: true`，要有 `tools:` 且不含 Bash／Edit／Write／NotebookEdit，且要有 skill 以 `perspective-writer:<name>` 派它。官方文件寫明不認識的 frontmatter 欄位會被靜默忽略，所以拼錯欄位名（例如 `omitClaudeMD`）時 agent 照常運作，只是回到載入 CLAUDE.md，沒有任何錯誤。已用暫存複本做負面測試：拼錯欄位與帶 `Bash` 的 `tools` 兩種都抓得到。
+
+### Changed
+- Phase 5e 的語序讀者與 Phase 5 的規則檔對照者，改派上述 plugin agent，不再用內建的 general-purpose。agent 不存在時（plugin 尚未重載）退回 general-purpose 並附一行說明；這是換派工對象，不是降級，也不算重試。
+- 起因：2026-10-19 使用者指出，一般 subagent 啟動時會載入整個 CLAUDE.md 層級（含 `~/.claude/CLAUDE.md`），所以 5e「不知道這段文字是誰寫的」並不完全成立。實測用巢狀 `claude -p --plugin-dir` 載入本版原始碼（Claude Code 2.1.303），問兩種 subagent 同一題：context 裡有沒有只存在於使用者 `~/.claude/CLAUDE.md` 的字串。`native-syntax-reader` 回「沒有」，`general-purpose` 回「有」並指出來源檔。
+- 版本需求：`omitClaudeMd` 需要 Claude Code v2.1.271 以上；更舊的版本無聲忽略該欄位，agent 仍可用，只是不隔離。
+- 規格沒改：`native-syntax-reading` 本來就要求讀者不得收到使用者的指示，這次是讓實作符合它。
+
+### 未改
+- 5d 與 5f 第二層的潤稿 subagent 仍是 general-purpose。它們是改寫角色，不是盲讀角色；是否一併隔離另案處理。
+- `rules-auditor` 沒有另做實測，它的 frontmatter 與 `native-syntax-reader` 相同，由斷言鎖住。
+
 ## [4.10.0] - 2026-10-02
 
 ### Added

@@ -138,10 +138,10 @@ TaskCreate(name="phase1_understand_writer",        description="Phase 1: 讀 use
 TaskCreate(name="phase3_simulate",                 description="Phase 3: 寫出 simulation 段落再開始 draft")
 TaskCreate(name="phase4_write_draft",              description="Phase 4: 初稿（Voice matching；文類特有的格律見已載入的 facet）")
 TaskCreate(name="phase5_antipatterns_check",       description="Phase 5: 過 core 的 anti-pattern checklist；facet 若有增補列與輸出格式，一併套用")
-TaskCreate(name="phase5_subject_rules_audit",      description="Phase 5 增補: 規則檔逐條對照 —— 派獨立 subagent，給它 resolve 回傳的規則檔全文與草稿，找出草稿違反的條目；起草者逐條決定改或不改，不改的列在 Phase 6；派不出則由起草者自己把規則檔條目逐條列出命中／未命中／不適用，不跳過這一步")
+TaskCreate(name="phase5_subject_rules_audit",      description="Phase 5 增補: 規則檔逐條對照 —— 派 `perspective-writer:rules-auditor`（不載入 CLAUDE.md 的獨立 subagent），給它 resolve 回傳的規則檔全文與草稿，找出草稿違反的條目；起草者逐條決定改或不改，不改的列在 Phase 6；派不出則由起草者自己把規則檔條目逐條列出命中／未命中／不適用，不跳過這一步")
 TaskCreate(name="phase5a_natural_voice_pass",      description="Phase 5a: 讀本 skill references/natural-writing-checklist.md，逐條確認五項：簡單動詞／句長跟思路且允許重複／轉折詞只在需要時／無為像人而造的錯字軼事／收尾不重述不加對提問者的話。任一項不成立就改，改完才 completed")
 TaskCreate(name="phase5d_cross_model_polish",      description="Phase 5d: 跨模型潤稿 —— 走三層 ladder（外部模型 → 獨立 subagent → 照常交付），下達 frozen span 清單，回稿後逐條驗證（仍存在且出現次數不變），mismatch 即回退潤稿前草稿")
-TaskCreate(name="phase5e_native_syntax_read",      description="Phase 5e: 派同家族獨立 subagent 當語序讀者，只給文字＋語言標記＋起點清單（不給草稿、來源、聲音模型、收件人脈絡、使用者指示）；讀者只標記不改稿，採用的改寫須過 frozen span 驗證；派不出／失敗／逾時／格式不符即照常交付並附一行說明；Phase 6 修改輪只重讀改動句與前後各一句")
+TaskCreate(name="phase5e_native_syntax_read",      description="Phase 5e: 派 `perspective-writer:native-syntax-reader`（不載入 CLAUDE.md 的獨立 subagent）當語序讀者，只給文字＋語言標記＋起點清單（不給草稿、來源、聲音模型、收件人脈絡、使用者指示）；讀者只標記不改稿，採用的改寫須過 frozen span 驗證；派不出／失敗／逾時／格式不符即照常交付並附一行說明；Phase 6 修改輪只重讀改動句與前後各一句")
 TaskCreate(name="phase5f_smooth_pass",             description="Phase 5f: 順稿 —— 用一句簡單指令（你可以順一下這封信嗎？／Can you smooth out this letter?）請 5d 同一條管道順一遍，並一起給與這封信有關的全部資訊（五類，見 5f）；回稿只是候選，須同時通過 frozen span 驗證與 anti-pattern 檢查才算可採用，否則整份捨棄；可採用也先給使用者看差異，不直接改稿")
 TaskCreate(name="phase5g_redundancy_trim",         description="Phase 5g: 刪冗 —— 起草的 agent 對照 5f 回稿（不論可否採用，只當參考），只刪或併原稿裡重複說同一件事的敘述；不新增、不借新措辭；每處都指得出信裡另一處仍說了；刪併後重過 Phase 5 與 5a；5f 沒有回稿則不執行")
 TaskCreate(name="phase6_present_and_iterate",      description="Phase 6: 呈現草稿並解釋選擇，等 user 回饋；若編輯檔案 → delegate draft-learner (6b)")
@@ -330,6 +330,8 @@ anti-pattern 表之後、5a 之前，把 Phase 0b resolve 回傳的規則檔**�
 
 **讀者**：由起草的 agent 派一個**獨立 subagent**，同模型家族即可。**只給兩樣**：規則檔全文（resolve 回傳的所有檔案，照回傳順序），與要交付的草稿；重新對照與 Phase 6 修改輪時，另加一份改動處清單。**不給**：Phase 1–3 的聲音模型、使用者對這封信說過的話、起草過程。讀者只需要規則與草稿。
 
+**派工**：用 plugin 自帶的 `perspective-writer:rules-auditor`（定義在 `agents/rules-auditor.md`），不用內建的 general-purpose。一般 subagent 啟動時會載入使用者的整個 CLAUDE.md 層級（含 `~/.claude/CLAUDE.md`，裡面有使用者的身分資料與全域指示），上面「不給」的清單於是名義上成立、實際上沒有。`rules-auditor` 的 frontmatter 設了 `omitClaudeMd: true`，工具只留 `Read`。`omitClaudeMd` 需要 Claude Code v2.1.271 以上；更舊的版本會無聲忽略這個欄位，agent 照常運作，只是回到載入 CLAUDE.md 的狀態。plugin 更新後要重啟 Claude Code（或 `/reload-plugins`）才會出現新 agent；派工時若指出該 agent 不存在，改用 general-purpose 派同一份委派訊息，並在 Phase 6 附一行「（規則檔對照者未隔離 CLAUDE.md）」。這是換派工對象，不是降級，也不算重試。
+
 讀者指示：
 
 ```
@@ -505,6 +507,8 @@ Phase 5 是你自己對草稿的檢查；Phase 5c 是多視角的**複核**，�
 ### 讀者
 
 由起草的 agent 派一個**獨立 subagent**，同模型家族即可。同一 session 由起草的 agent 自己再讀一遍不算數，理由同 5d 第二層。
+
+**派工**：用 plugin 自帶的 `perspective-writer:native-syntax-reader`（定義在 `agents/native-syntax-reader.md`），不用內建的 general-purpose。「不知道這段文字是誰寫的」要連 CLAUDE.md 一起算：一般 subagent 啟動時會載入使用者的整個 CLAUDE.md 層級（含 `~/.claude/CLAUDE.md`），讀者就不再是盲讀。`native-syntax-reader` 的 frontmatter 設了 `omitClaudeMd: true`，工具只留 `Read`。版本需求、plugin 更新後的重載、以及 agent 不存在時改用 general-purpose 並附一行「（語序讀者未隔離 CLAUDE.md）」，做法同規則檔對照。
 
 **只給三樣**：
 
