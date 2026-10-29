@@ -91,7 +91,7 @@ which is where the silent failure lives.
 ## Install
 
 ```bash
-claude plugin marketplace add PsychQuant/perspective-writer
+claude plugin marketplace add Academic-Toolkit/perspective-writer
 claude plugin install perspective-writer@perspective-writer
 ```
 

@@ -6,7 +6,7 @@
     "name": "Che Cheng",
     "email": "che@example.com"
   },
-  "homepage": "https://github.com/PsychQuant/perspective-writer",
+  "homepage": "https://github.com/Academic-Toolkit/perspective-writer",
   "plugins": [
     {
       "name": "perspective-writer",
