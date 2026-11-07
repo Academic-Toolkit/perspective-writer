@@ -122,6 +122,17 @@ not read. The `perspective-writer/` prefix is a convention, not a check: any
 Markdown file inside the plugin can be named, which is one more reason to include
 only plugins you trust.
 
+**Other readers.** A file a plugin publishes under `perspective-writer/` is not
+reserved for this plugin. The publishing plugin's own skills may read the same file
+directly, so that one copy serves both; a second copy kept for those skills would
+drift from the one this plugin reads. This plugin takes no part in that other
+reading: it expands nothing for those readers and makes no disclosure on their
+behalf, and `scripts/plugin-rules.sh` is not an interface for other plugins. A
+reader that opens the file directly sees an include line as a one-line comment, not
+as the rules it names, and this plugin does not expand an include line inside an
+included file either (see **Include**). A file meant for both kinds of reader
+therefore contains no include line.
+
 ## Resolution order
 
 Resolve returns files **least-specific first**, so that a later file's general

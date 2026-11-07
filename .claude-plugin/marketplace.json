@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "perspective-writer",
-      "version": "4.12.3",
+      "version": "4.12.4",
       "description": "Write letters, emails, autobiographies, and formal documents by simulating the writer's authentic voice. Uses Tarski's T-Schema to ensure every sentence has a concrete referent, and a 7-phase process (understand writer, understand recipient, simulate, write, anti-pattern check, cross-model polish, iterate) to produce writing that sounds like a real person, not AI.",
       "author": {
         "name": "Che Cheng"
