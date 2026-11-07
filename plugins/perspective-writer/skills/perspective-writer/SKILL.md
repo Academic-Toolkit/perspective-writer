@@ -265,8 +265,9 @@ the reason, and read the raw file.
 
 When the status is `generic` and there is an `include-unresolved` or
 `redirect-unresolved` disclosure, do not say "this subject has no rules": say that no
-subject rules were found and that the named rule file exists but its included rules
-could not be loaded (*Outcome statuses* in the contract).
+subject rules were found and that a rule file refers, through an include line or a
+redirect placeholder, to rules that could not be loaded, naming the target (*Outcome
+statuses* in the contract).
 
 **Source disclosure.** Also before presenting any draft, name every rule file that
 came from another plugin: for each `pw:source begin` marker and each imported header

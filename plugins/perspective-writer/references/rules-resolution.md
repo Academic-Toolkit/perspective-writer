@@ -169,9 +169,9 @@ Resolve returns exactly one of three statuses:
 
 | Status | Meaning | Disclosure obligation |
 | ------ | ------- | --------------------- |
-| **subject-specific** | The subject's core file was found at the current location. | none |
+| **subject-specific** | The subject's core was found: a core file at the current location, or a skill packaging the subject's rules (see **Skill-packaged subject rules**). | none |
 | **legacy** | Resolution succeeded through the legacy location or a redirect placeholder. | name the location used; offer migration |
-| **generic** | No subject file was found at the current location or the legacy location. | state that this subject has no existing rules |
+| **generic** | No subject rules were found at any source the resolution order consults. | state that this subject has no existing rules |
 
 A skill receiving a status other than subject-specific discloses it to the user
 **before** presenting a draft. The disclosure is not waived because the draft
@@ -185,8 +185,9 @@ disclosure reported alongside whichever status resolve returned.
 
 When the status is `generic` and resolve also produced `include-unresolved` or
 `redirect-unresolved`, the `generic` disclosure must not be phrased as "there are no
-rules". State both facts: no rules for this subject were found, and the named rule
-file exists but the rules it points to could not be loaded. Saying only that there
+rules". State both facts: no rules for this subject were found, and a rule file
+refers, through an include line or a redirect placeholder, to rules that could not
+be loaded; name the target. Saying only that there
 are no rules is the wrong `generic` this contract warns against.
 
 ## Additional disclosures
