@@ -92,7 +92,7 @@ The workspace defaults to the git toplevel of the current directory. Pass
 | Exit code | Meaning | What you do |
 | --------- | ------- | ----------- |
 | 0 | written | go to Step 4 |
-| 2 | bad arguments, the plugin or file cannot be found, the name matches several plugins, or the path is unsafe | relay the script's message as it is; if it lists several plugins, ask which one; if the conventional path was missing, ask the user for the path. Do not guess further paths |
+| 2 | bad arguments, the plugin or file cannot be found, the name matches several plugins, the path is unsafe, or the source file contains an include line | relay the script's message as it is; if it lists several plugins, ask which one; if the conventional path was missing, ask the user for the path. Do not guess further paths. When the source contains an include line, it cannot be imported: offer to write an include line for it in the workspace file instead |
 | 3 | Claude Code's installed-plugin record cannot be read in the shape the script expects | stop and report the message; nothing was written |
 | 4 | the target file already exists | Read it, show the user its first lines and whether its first line is an earlier `pw:imported` header, and ask whether to replace it. Re-run with `--force` only after an explicit yes |
 
