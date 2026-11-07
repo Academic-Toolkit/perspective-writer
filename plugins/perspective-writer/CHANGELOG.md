@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.12.4] - 2026-11-08
+
+### Changed
+
+- The rule-resolution contract states that a file a plugin publishes under `perspective-writer/` is not reserved for perspective-writer: the plugin's own skills may read the same file, so one copy serves both. perspective-writer expands and discloses nothing for those readers, `plugin-rules.sh` is not an interface for other plugins, and a file read by both contains no include line. The README says the same (#31).
+
 ## [4.12.1] - 2026-11-07
 
 ### Fixed

@@ -67,6 +67,10 @@ freeze the rules a submitted document was written under, or to keep a copy you e
 plugin's file later changes, resolve discloses `import-stale`; it never overwrites the copy, and the
 import itself refuses to replace an existing file without `--force`.
 
+The plugin's file is not reserved for perspective-writer: the plugin's own skills can read the same
+file, so one copy serves both. perspective-writer expands nothing for those other readers, so a file
+shared this way should contain no include line.
+
 **Problems are disclosed, never dropped.** They do not add an outcome status — the three statuses
 in the consumer contract below are unchanged — but each is reported to the user before a draft as
 one of four additional disclosures: `include-unresolved` (plugin not installed, file missing, name
