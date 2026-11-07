@@ -166,13 +166,19 @@ fi
 # and the draft reads well either way. The kinds are compared in order, because the
 # README promises consumers that order. Whether the model actually writes the
 # attribute cannot be checked here; the README says so.
+#   - The attribute must appear in a header example (`pw:calibrate v1 ... disclosures=`),
+#     not merely somewhere in the section: the section mentions `disclosures=` in
+#     several places, and the header shape could go while the mentions stay.
+#   - Table cells may be padded (a Markdown formatter does that), and a kind is any
+#     backticked first-column cell, not only lowercase and hyphens, so that a new kind
+#     spelled differently is still compared rather than silently dropped.
 CORE_SKILL="$SKILLS/perspective-writer/SKILL.md"
 section() { awk -v h="$2" 'index($0, h) == 1 { f = 1; print; next } f && /^## / { exit } f' "$1"; }
 contract_kinds=$(section "$CONTRACT" '## Additional disclosures' \
-  | sed -n 's/^| `\([a-z-]*\)` |.*/\1/p' | paste -sd, -)
+  | sed -n 's/^|[[:space:]]*`\([^`]*\)`[[:space:]]*|.*/\1/p' | paste -sd, -)
 readme_contract=$(section "$README" '## EXTERNAL-CONSUMER CONTRACT')
 readme_kinds=$(printf '%s\n' "$readme_contract" | grep -m1 -F '**Disclosure kinds**' \
-  | sed 's/\. .*//' | grep -o '`[a-z-]*`' | tr -d '`' | paste -sd, -)
+  | sed 's/\. .*//' | grep -o '`[^`]*`' | tr -d '`' | paste -sd, -)
 calibrate_entry=$([ -f "$CORE_SKILL" ] && section "$CORE_SKILL" '## Calibrate-draft entry')
 header_ok=1
 if [ -z "$contract_kinds" ]; then
@@ -180,13 +186,13 @@ if [ -z "$contract_kinds" ]; then
 elif [ "$readme_kinds" != "$contract_kinds" ]; then
   bad "README disclosure kinds (${readme_kinds:-none}) differ from the contract's ($contract_kinds), or are out of its order"; header_ok=0
 fi
-grep -qF 'disclosures=' <<<"$readme_contract" \
-  || { bad "README consumer contract does not specify the disclosures= header attribute"; header_ok=0; }
+grep -qE 'pw:calibrate v1 [^>]*disclosures=' <<<"$readme_contract" \
+  || { bad "README consumer contract does not specify the disclosures= header attribute (no header example carries it)"; header_ok=0; }
 grep -qF 'SHALL ignore header attributes they do not recognise' <<<"$readme_contract" \
   || { bad "README consumer contract no longer tells consumers to ignore unknown header attributes"; header_ok=0; }
 if [ -z "$calibrate_entry" ]; then
   bad "core skill has no '## Calibrate-draft entry' section"; header_ok=0
-elif ! grep -qF 'disclosures=' <<<"$calibrate_entry"; then
+elif ! grep -qE 'pw:calibrate v1 [^>]*disclosures=' <<<"$calibrate_entry"; then
   bad "the skill's Calibrate-draft entry does not write the disclosures= header attribute"; header_ok=0
 fi
 [ "$header_ok" -eq 1 ] && ok "calibrate header carries disclosure kinds that match the contract"
