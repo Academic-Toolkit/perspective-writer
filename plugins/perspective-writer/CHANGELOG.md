@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.12.1] - 2026-11-07
+
+### Fixed
+
+- The rule-resolution contract defines `subject-specific` as a core file at the current location or a skill packaging the subject's rules, matching **Skill-packaged subject rules**; `generic` means no subject rules at any source the resolution order consults.
+- When `generic` comes with `include-unresolved` or `redirect-unresolved`, the contract and the core skill say that a rule file refers to rules that could not be loaded, naming the target, instead of saying the named file exists (#26).
+
+### Changed
+
+- Four completed openspec changes are archived; `openspec/specs/` holds eight capabilities, and their requirements follow the current contract (#26).
+
 ## [4.12.0] - 2026-11-07
 
 ### Added
