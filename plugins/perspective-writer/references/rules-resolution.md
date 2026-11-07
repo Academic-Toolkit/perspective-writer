@@ -5,15 +5,19 @@ them, and what a skill must do with what it finds. Every skill in this plugin th
 reads or persists writing rules cites a section of this document instead of
 constructing a path of its own.
 
-Two operations are defined:
+Three operations are defined:
 
 - **resolve** — given a subject and a genre, return an ordered list of existing
-  rule files plus an outcome status.
+  rule files, expanded, plus an outcome status and any additional disclosures.
 - **persist** — given a subject and a genre, return the single file a newly
   learned rule should be written to.
+- **import** — copy a rule file that another installed plugin publishes into this
+  namespace, recording where it came from.
 
 A skill names the operation it performs and cites the relevant section here. A
-skill does not assemble a directory path, a filename, or a glob pattern inline.
+skill does not assemble a directory path, a filename, or a glob pattern inline,
+and does not read Claude Code's installed-plugin record: files inside other
+plugins are reached only through `scripts/plugin-rules.sh`.
 
 ## Storage layout
 
@@ -47,6 +51,51 @@ rules are broken" call for different responses.
 Slugs are kebab-case. A subject slug identifies a person or party; a genre slug
 identifies a document kind (`email`, `proposal`, and others as they arise).
 
+### Rules published by other plugins
+
+A rule file in this namespace may draw on a rule file that another installed
+plugin publishes, in one of two ways. Include is the default.
+
+**Include.** A line of its own of the form
+
+```
+<!-- pw:include plugin:<name>@<marketplace>/<path> -->
+```
+
+stands for the content of `<path>` inside the installed directory of the plugin
+keyed `<name>@<marketplace>` in Claude Code's installed-plugin record. The rules
+therefore exist once, in the plugin, and a plugin update takes effect without
+touching the workspace. `@<marketplace>` may be omitted only when exactly one
+installed plugin has that name. An include is followed once: an include line
+inside the included file is not expanded. Every other line of the file is the
+workspace's own rules.
+
+**Import.** A copy of the plugin's file, written into this namespace by the
+**import** operation, whose first line records where it came from:
+
+```
+<!-- pw:imported plugin:<name>@<marketplace> version:<version> path:<path> sha256:<hex> date:<YYYY-MM-DD> -->
+```
+
+A copy can be frozen at one version — a submitted document can keep the rules it
+was written under — or edited locally. The header lets resolve tell when the
+source has changed since the copy was made; it never updates the copy.
+
+**Where a plugin puts its rules.** A plugin that publishes rules for this plugin
+places them under its own root, mirroring this namespace:
+
+```
+<plugin-root>/perspective-writer/
+  genres/<genre-slug>.md
+  subjects/<subject-slug>/core.md
+  subjects/<subject-slug>/<genre-slug>.md
+```
+
+The `<path>` in an include or import is relative to the plugin root, ends in
+`.md`, contains no `..` segment, and does not leave the plugin's installed
+directory once symbolic links are resolved. A path that breaks any of these is
+not read.
+
 ## Resolution order
 
 Resolve returns files **least-specific first**, so that a later file's general
@@ -73,6 +122,20 @@ Example with all three levels present:
 With only a core file and no genre convention or facet, resolve returns a
 single-element list.
 
+**Every file resolve returns is passed through `scripts/plugin-rules.sh expand`
+before it is read, in the order above.** Expansion replaces each include line with
+the included content between `<!-- pw:source begin plugin:<key> version:<version>
+path:<path> -->` and `<!-- pw:source end -->`, checks an imported copy against its
+source, and writes each problem to stderr as one line
+`pw:disclosure <kind> <target> — <reason>` (see **Additional disclosures**). The
+expanded text, not the raw file, is what the drafter and the rules auditor read. A
+file with no include line and no imported header expands to itself.
+
+When expansion exits with code 3, the installed-plugin record could not be read
+and the file's includes were not expanded. Treat this as an `include-unresolved`
+disclosure for that file, naming the file and the record path, and read the raw
+file; do not present the result as if the file had no includes.
+
 ## Outcome statuses
 
 Resolve returns exactly one of three statuses:
@@ -88,6 +151,31 @@ A skill receiving a status other than subject-specific discloses it to the user
 reads well — a draft produced without a subject's rules can read perfectly and
 still not sound like the writer, which is precisely why the absence has to be
 stated rather than inferred from the output.
+
+These three are the only statuses. A problem with an included or imported rule
+file, or a redirect that leads nowhere, does not add a status: it is an additional
+disclosure reported alongside whichever status resolve returned.
+
+## Additional disclosures
+
+Besides its status, resolve can produce additional disclosures. The set is closed:
+there are exactly these four, and no other problem is to be reported as a fifth
+kind.
+
+| Disclosure | Produced by | Meaning |
+| ---------- | ----------- | ------- |
+| `include-unresolved` | `plugin-rules.sh expand` | An include line was not expanded: the plugin is not installed, the file is missing, the plugin name without `@<marketplace>` matches zero or several plugins, the path is unsafe, the line is malformed, or the installed-plugin record could not be read. The rules that line names are not loaded. |
+| `include-nested` | `plugin-rules.sh expand` | An included file contains an include line of its own. It was left unexpanded. |
+| `import-stale` | `plugin-rules.sh expand` | An imported copy's source has changed since the copy was made, or can no longer be found. The copy is still used. |
+| `redirect-unresolved` | resolve, under **Redirect placeholder is followed once** | A redirect placeholder names a subject directory that does not exist. |
+
+A skill tells the user every additional disclosure, naming its target, **before**
+presenting a draft — for the same reason as the status disclosure: a draft written
+without the missing rules can read well and still be wrong.
+
+An additional disclosure never changes the status. A subject whose core file was
+found is `subject-specific` even when an included genre file is unresolved; the
+user is told about both.
 
 ## Dual-location conflict
 
@@ -111,6 +199,15 @@ asserted on the writer's behalf.
 Every facet file states this precedence in its header. There is no interpreter
 for these files; the precedence is prose because prose is what reads them.
 
+**Within one file, later text overrides earlier text, and included content counts
+as standing where its include line was.** The workspace's own lines that follow an
+include line therefore take precedence over the included rules, just as a later
+file in the resolution order overrides an earlier one. This is how a workspace
+accepts a plugin's rules and amends one of them: write the amendment after the
+include line. Included content is bound by the same limits as the file that
+includes it; an included facet cannot override its subject core's honesty
+boundaries either.
+
 ## Named resolution contract
 
 The contract is this document. A skill cites the section it depends on:
@@ -120,11 +217,26 @@ The contract is this document. A skill cites the section it depends on:
 | read a subject's rules before drafting | resolve | Resolution order, Outcome statuses |
 | write a newly learned rule for a subject | persist | Storage layout, Split criterion by reader |
 | locate rules to rewrite | resolve | Resolution order, Dual-location conflict |
+| tell the user what could not be loaded | resolve | Additional disclosures |
+| copy another plugin's rules into the workspace | import | Storage layout, Named resolution contract |
 
 `persist` targets `subjects/<subject>/core.md` when the rule does not vary with
 genre, and `subjects/<subject>/<genre>.md` when it does. A rule with no subject —
 a convention that belongs to the genre rather than to a party — targets
 `genres/<genre>.md`.
+
+`persist` writes only files in this namespace and never a file inside another
+plugin. When the target file contains an include line, the new rule is written
+after that line, so that it overrides the included rules (see **Composition
+precedence**). An imported copy may be edited directly; its header line stays as
+the first line.
+
+`import` is performed by `scripts/plugin-rules.sh import plugin:<name>[@<marketplace>]/<path>`
+with `--genre <slug>`, `--subject <slug>`, or both. It writes the same target
+`persist` would choose for that subject and genre, prints the path it wrote, and
+refuses with exit code 4 when that file already exists. Replacing an existing file
+(`--force`) needs the user's explicit consent, because the existing file may hold
+the workspace's own rules.
 
 ## Split criterion by reader
 
@@ -247,8 +359,11 @@ not break an unmigrated workspace.
 
 A file at the legacy location whose content is a redirect placeholder resolves to
 the location the placeholder names, and is **followed exactly once**. A
-placeholder naming a subject directory that does not exist is reported as
-unresolved; resolve does not follow any further redirect.
+placeholder naming a subject directory that does not exist produces the
+`redirect-unresolved` additional disclosure (see **Additional disclosures**) and
+contributes no rules, so the status is whatever the remaining sources give —
+`generic` when nothing else is found. Resolve does not follow any further
+redirect.
 
 Placeholder form — a single line naming the subject directory:
 
