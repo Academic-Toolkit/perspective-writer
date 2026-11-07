@@ -224,10 +224,13 @@ conditioned on the lookup having run, not on a rules file existing — see the
 returned, in the returned order, run
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file>
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file> 2><disclosures-file>
 ```
 
-and read its stdout instead of the raw file (*Resolution order* in the contract). A
+and read its stdout instead of the raw file (*Resolution order* in the contract). The
+Bash tool merges stdout and stderr, so send stderr to a file of its own: the
+`pw:disclosure` lines go to the user, not into the rules text that the rules auditor
+judges line by line. A
 workspace rule file can carry a `pw:include` line that stands for another plugin's
 rules; the raw file shows only that one comment line, and drafting from it means
 drafting without those rules. Wherever this skill later says "the files resolve
@@ -255,8 +258,10 @@ time is a normal path, not a failure.
 user each one with its target, in addition to the status disclosure and whatever
 the status is. They never change the status: `subject-specific` stays
 `subject-specific` when an included genre file is unresolved. When expand exits with
-code 3, the installed-plugin record could not be read: report it as
-`include-unresolved` for that file, naming the file, and read the raw file.
+code 3, the installed-plugin record could not be read or a tool it needs is missing;
+when the script cannot be run at all (not found, not executable), the result is the
+same. In both cases report `include-unresolved` for that file, naming the file and
+the reason, and read the raw file.
 
 When the status is `generic` and there is an `include-unresolved` or
 `redirect-unresolved` disclosure, do not say "this subject has no rules": say that no

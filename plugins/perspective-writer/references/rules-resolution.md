@@ -67,9 +67,12 @@ keyed `<name>@<marketplace>` in Claude Code's installed-plugin record. The rules
 therefore exist once, in the plugin, and a plugin update takes effect without
 touching the workspace. `@<marketplace>` may be omitted only when exactly one
 installed plugin has that name. An include is followed once: an include line
-inside the included file is not expanded. A line inside a fenced code block
-(opened by ```` ``` ```` or `~~~`) is never an include line, so a rules file can
-show the syntax. Every other line of the file is the workspace's own rules.
+inside the included file is not expanded. Code is never an include line, so a
+rules file can show the syntax: a line inside a fenced block (opened by
+```` ``` ```` or `~~~`, closed only by the same character at least as long as the
+opening run) or an indented code line (four spaces or a tab). An include line may be
+indented by at most three spaces. Every other line of the file is the workspace's
+own rules.
 
 When the record lists several installs of one plugin, a project- or local-scope
 install counts only for rules files inside its project; among the installs that
@@ -106,7 +109,9 @@ places them under its own root, mirroring this namespace:
 The `<path>` in an include or import is relative to the plugin root, ends in
 `.md`, contains no `..` segment, and does not leave the plugin's installed
 directory once symbolic links are resolved. A path that breaks any of these is
-not read.
+not read. The `perspective-writer/` prefix is a convention, not a check: any
+Markdown file inside the plugin can be named, which is one more reason to include
+only plugins you trust.
 
 ## Resolution order
 
@@ -152,8 +157,9 @@ in the expanded text, the plugin key, version and path. This is not a problem
 disclosure and does not change the status; it is how the user sees which plugin's
 rules, at which version, shaped the draft.
 
-When expansion exits with code 3, the installed-plugin record could not be read
-and the file's includes were not expanded. Treat this as an `include-unresolved`
+When expansion exits with code 3, the installed-plugin record could not be read,
+or a tool the script needs (jq, a sha256 tool) is missing, and the file's includes
+were not expanded. The same applies when the script cannot be run at all. Treat this as an `include-unresolved`
 disclosure for that file, naming the file and the record path, and read the raw
 file; do not present the result as if the file had no includes.
 
