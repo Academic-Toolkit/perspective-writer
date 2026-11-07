@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.12.3] - 2026-11-08
+
+### Fixed
+
+- `role-calibrator`, `draft-learner` and `save-feedback` read rule files through `plugin-rules.sh expand` before comparing or deduplicating, so a workspace file that is mostly a `pw:include` line no longer looks empty to them; `check-contract-consistency.sh` fails when a skill that resolves or persists rules stops expanding them (#29).
+
 ## [4.12.1] - 2026-11-07
 
 ### Fixed
