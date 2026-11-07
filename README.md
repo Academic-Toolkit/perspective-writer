@@ -63,7 +63,9 @@ plugins/perspective-writer/scripts/plugin-rules.sh import plugin:<name>@<marketp
 
 copies the file into the workspace with a first line recording plugin, version, path, sha256 and date
 (`--subject <slug>` targets a subject's core, and both flags target that subject's facet). Use it to
-freeze the rules a submitted document was written under, or to keep a copy you edit. When the
+freeze the rules a submitted document was written under, or to keep a copy you edit. A file that itself
+contains an include line, well formed or not, is not imported (exit code 2): include it instead, so that its own include is
+reported as nested rather than expanded, and so that the copy's one hash covers everything it holds. When the
 plugin's file later changes, resolve discloses `import-stale`; it never overwrites the copy, and the
 import itself refuses to replace an existing file without `--force`.
 

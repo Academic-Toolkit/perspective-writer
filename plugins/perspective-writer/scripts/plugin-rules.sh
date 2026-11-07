@@ -392,6 +392,13 @@ cmd_import() {
   pick_sha_tool
   resolve_ref "$ref" || die 2 "cannot import plugin:$ref — $R_REASON"
 
+  # A copy is one file with one hash. A source that includes other rules would become a
+  # workspace-level include once copied — expanded, unlike the nested include a direct
+  # include reports — and its included files could change without making the copy stale.
+  if has_unfenced "$MENTION_RE" "$R_FILE"; then
+    die 2 "plugin:$ref contains an include line; include it from the workspace instead of importing it"
+  fi
+
   if [ -d "$target" ]; then
     die 2 "$target is a directory (or a link to one); refusing to import over it"
   fi

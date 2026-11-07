@@ -6,7 +6,7 @@ description: >
   "不應該用請教", "tone doesn't match my expertise", or when a draft uses deference language
   for topics where the user is the expert. Also trigger from /perspective-writer:role-calibrator directly.
 argument-hint: <role description or correction>
-allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *), Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Role Calibrator
@@ -25,7 +25,7 @@ break down when the writer IS the expert on the topic being discussed.
 
 ```
 TaskCreate(name="step1_identify_calibration",     description="Step 1: 從 user 輸入抽出 who / domain / current problem / desired positioning")
-TaskCreate(name="step2_read_existing_rules",      description="Step 2: 對該對象執行 resolve（見 references/rules-resolution.md 的 Resolution order）並 Read 回傳的檔案")
+TaskCreate(name="step2_read_existing_rules",      description="Step 2: 對該對象執行 resolve（見 references/rules-resolution.md 的 Resolution order），對回傳的每個檔案跑 plugin-rules.sh expand、讀 stdout 而不讀原始檔，告知附加揭露")
 TaskCreate(name="step3_add_role_section",         description="Step 3: 加或更新「## 角色定位」section（含語氣切換表、替換詞彙）")
 TaskCreate(name="step4_update_related_sections",  description="Step 4: 檢查信件結構 / 用詞偏好 / 注意事項是否要跟著調")
 TaskCreate(name="step5_confirm_with_user",        description="Step 5: 給 user 摘要：角色對哪些 domain 是專家、哪些 domain 仍請教")
@@ -50,8 +50,18 @@ From the user's input, extract:
 
 ```
 resolve(subject, genre) — see references/rules-resolution.md, sections *Resolution order* and *Dual-location conflict*
-Read the matched file(s)
 ```
+
+For each file resolve returned, run
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1
+```
+
+and read its stdout, not the raw file (*Resolution order* in the contract). A workspace rule file can be
+little more than one `pw:include` line; the rules it stands for appear only in the expansion, between
+`pw:source` markers. Run it exactly in this form, which is what the skill's `allowed-tools` permits. Lines that
+begin with `pw:disclosure` are disclosures, not rules: tell the user each one before proposing changes. The role section is still written into the workspace file itself, after any include line (Step 3).
 
 Look for:
 - Blanket deference rules that don't account for domain expertise

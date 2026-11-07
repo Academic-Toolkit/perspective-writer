@@ -96,6 +96,15 @@ A copy can be frozen at one version — a submitted document can keep the rules 
 was written under — or edited locally. The header lets resolve tell when the
 source has changed since the copy was made; it never updates the copy.
 
+A source that contains an include line outside code, well formed or not, is **not imported**: import
+refuses it with exit code 2 and asks for an include line instead. Copied, that line
+would become a workspace-level include and be expanded, whereas including the same
+source reports it as `include-nested` and leaves it alone; and the copy's single
+sha256 would not cover the files it includes, so the copy could not be frozen. The
+refusal makes both ways of using such a source give the same result. An include line
+the user adds to a copy afterwards is the workspace's own and expands as usual.
+Copies made before this rule existed are not revisited.
+
 **Where a plugin puts its rules.** A plugin that publishes rules for this plugin
 places them under its own root, mirroring this namespace:
 
@@ -278,8 +287,9 @@ the first line.
 
 `import` is performed by `scripts/plugin-rules.sh import plugin:<name>[@<marketplace>]/<path>`
 with `--genre <slug>`, `--subject <slug>`, or both. It writes the same target
-`persist` would choose for that subject and genre, prints the path it wrote, and
-refuses with exit code 4 when that file already exists. Replacing an existing file
+`persist` would choose for that subject and genre, prints the path it wrote,
+refuses with exit code 4 when that file already exists, and refuses with exit code 2
+when the source contains an include line outside code (see **Import** above). Replacing an existing file
 (`--force`) needs the user's explicit consent, because the existing file may hold
 the workspace's own rules.
 

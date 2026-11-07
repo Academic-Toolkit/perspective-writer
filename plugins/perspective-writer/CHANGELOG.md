@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The rule-resolution contract states that a file a plugin publishes under `perspective-writer/` is not reserved for perspective-writer: the plugin's own skills may read the same file, so one copy serves both. perspective-writer expands and discloses nothing for those readers, `plugin-rules.sh` is not an interface for other plugins, and a file read by both contains no include line. The README says the same (#31).
 
+## [4.12.3] - 2026-11-08
+
+### Fixed
+
+- `role-calibrator`, `draft-learner` and `save-feedback` read rule files through `plugin-rules.sh expand` before comparing or deduplicating, so a workspace file that is mostly a `pw:include` line no longer looks empty to them. The three skills now allow `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *)` and run the script in exactly that form (`${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1`); a leading `bash` or a quoted path would not match the grant. `check-contract-consistency.sh` fails when a skill that resolves or persists rules stops expanding them, or restricts its tools without allowing that script (#29).
+
+## [4.12.2] - 2026-11-08
+
+### Changed
+
+- `plugin-rules.sh import` refuses, with exit code 2, a source file that contains an include line outside code, and asks for an include line instead. A copied include line would have been expanded at the workspace level, unlike the nested include a direct include reports, and the copy's single sha256 could not freeze the files it includes. Copies made earlier are not revisited (#28).
+
 ## [4.12.1] - 2026-11-07
 
 ### Fixed
