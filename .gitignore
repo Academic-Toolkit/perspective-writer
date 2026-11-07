@@ -7,3 +7,6 @@ openspec/.vector-search.db*
 # Per-clone IDD config. The IDD CI gate reads a ci command only from an untracked
 # .claude/.idd/local.json, so each clone keeps its own copy.
 .claude/.idd/local.json
+
+# IDD tree-lock (idd-tree-lock.sh #183) — per-machine session state, not tracked
+.claude/.idd/tree-lock
