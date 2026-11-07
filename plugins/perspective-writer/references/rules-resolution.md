@@ -96,7 +96,7 @@ A copy can be frozen at one version — a submitted document can keep the rules 
 was written under — or edited locally. The header lets resolve tell when the
 source has changed since the copy was made; it never updates the copy.
 
-A source that contains an include line outside code is **not imported**: import
+A source that contains an include line outside code, well formed or not, is **not imported**: import
 refuses it with exit code 2 and asks for an include line instead. Copied, that line
 would become a workspace-level include and be expanded, whereas including the same
 source reports it as `include-nested` and leaves it alone; and the copy's single
