@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'consumer-generic-disclosure-obligation'. Update Purpose after archive.
+How an external consumer of the writing skill reads the resolution status and discloses a degraded outcome to its user.
 
 ## Requirements
 

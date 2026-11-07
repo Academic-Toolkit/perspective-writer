@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'subject-genre-rules-contract'. Update Purpose after archive.
+Reading rules left at the legacy location, following redirect placeholders, and migrating legacy files into the current layout.
 
 ## Requirements
 

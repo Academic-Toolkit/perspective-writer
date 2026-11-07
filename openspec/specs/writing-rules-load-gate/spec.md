@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'subject-genre-rules-contract'. Update Purpose after archive.
+The gate that refuses drafting when no resolution was recorded, and the disclosures a recorded outcome obliges before a draft is presented.
 
 ## Requirements
 
@@ -51,7 +51,7 @@ code:
 ---
 ### Requirement: Generic outcome does not trigger refusal
 
-A resolution that ran and returned the generic outcome SHALL NOT cause refusal. The skill SHALL proceed to draft and SHALL state that the subject has no existing rules before presenting the draft. When an include-unresolved or redirect-unresolved disclosure accompanies the generic outcome, that statement SHALL also say that a named rule file exists whose rules could not be loaded, as the Outcome statuses requirement of the resolution contract specifies.
+A resolution that ran and returned the generic outcome SHALL NOT cause refusal. The skill SHALL proceed to draft and SHALL state that the subject has no existing rules before presenting the draft. When an include-unresolved or redirect-unresolved disclosure accompanies the generic outcome, that statement SHALL also say that a rule file refers, through an include line or a redirect placeholder, to rules that could not be loaded, naming the target, as the Outcome statuses requirement of the resolution contract specifies.
 
 #### Scenario: First time writing to a subject
 
@@ -71,14 +71,14 @@ A resolution that ran and returned the generic outcome SHALL NOT cause refusal. 
 | --------- | ------------------- | -------------- | -------- |
 | lookup step skipped | no | none | refuse, name the missing lookup |
 | genuine first contact | yes | generic | draft, disclose absence of rules |
-| named rule file could not be loaded | yes | generic, with include-unresolved or redirect-unresolved | draft, disclose that no rules were found and that the named file could not be loaded |
+| referenced rules could not be loaded | yes | generic, with include-unresolved or redirect-unresolved | draft, disclose that no rules were found and that the rules an include line or redirect placeholder refers to could not be loaded, naming the target |
 | rules at legacy location | yes | legacy | draft, disclose location, offer migration |
 | rules at current location | yes | subject-specific | draft, no status disclosure |
 
 ---
 ### Requirement: Disclosure is mandatory and specific
 
-When the recorded outcome is generic, the skill SHALL state that the subject has no existing rules; when an include-unresolved or redirect-unresolved disclosure accompanies it, the skill SHALL instead state both that no rules for this subject were found and that a named rule file exists whose rules could not be loaded. When the recorded outcome is legacy, the skill SHALL state which location supplied the rules and SHALL offer migration. Every additional disclosure SHALL be stated, naming its target, before the draft is presented. No disclosure SHALL be omitted on the grounds that the draft appears acceptable.
+When the recorded outcome is generic, the skill SHALL state that the subject has no existing rules; when an include-unresolved or redirect-unresolved disclosure accompanies it, the skill SHALL instead state both that no rules for this subject were found and that a rule file refers, through an include line or a redirect placeholder, to rules that could not be loaded, naming the target. When the recorded outcome is legacy, the skill SHALL state which location supplied the rules and SHALL offer migration. Every additional disclosure SHALL be stated, naming its target, before the draft is presented. No disclosure SHALL be omitted on the grounds that the draft appears acceptable.
 
 #### Scenario: Legacy outcome recorded
 

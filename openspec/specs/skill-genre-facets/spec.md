@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'skill-core-facet-split'. Update Purpose after archive.
+How the writing skill is split into a genre-independent core and per-genre facets, and what each part may contain.
 
 ## Requirements
 

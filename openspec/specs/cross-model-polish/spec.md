@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'cross-model-polish-pass'. Update Purpose after archive.
+The cross-model polish pass that runs before a draft is presented: the fallback ladder it degrades through, the anchored spans it must preserve, how its convergence is observed, and where its governance is resolved.
 
 ## Requirements
 
