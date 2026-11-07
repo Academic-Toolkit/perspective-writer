@@ -107,6 +107,14 @@ resolve(subject, genre) — 見 references/rules-resolution.md 的 *Resolution o
 - 完全新主題 → Write 新檔
 - 不確定 → 詢問 user 哪個 path
 
+### persist 只寫工作區
+
+依契約的 *Named resolution contract* 與 *Composition precedence*，寫入位置有三條限制：
+
+1. **只寫工作區規則命名空間裡的檔案。** 不改任何 plugin 裡的檔案，即使使用者糾正的那條規則來自 plugin（展開後的文字裡，它在 `pw:source` 標記之間）。糾正寫進工作區的檔案，從那裡覆寫 plugin 的規則。
+2. **寫在 include 行之後。** 目標檔有 `<!-- pw:include plugin:... -->` 行時，新規則寫在它後面，才會優先於被引用的規則；include 行本身不動。
+3. **匯入的副本可以直接改。** 第一行是 `<!-- pw:imported ... -->` 的檔案是工作區自己的副本，新規則加進去，檔頭保留在第一行。
+
 ## Step 5: Write Rules File
 
 格式:

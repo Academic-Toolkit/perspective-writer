@@ -95,6 +95,22 @@ cite the contract's *Named resolution contract* and *Storage layout* sections.
 A rule that holds across genres for that subject belongs in the subject's core;
 a rule specific to this draft's genre belongs in that genre's facet.
 
+### Persist writes only workspace files
+
+The contract's *Named resolution contract* and *Composition precedence* sections set
+three limits on where the rule is written:
+
+1. **Only files in this workspace's rules namespace.** Never edit a file inside
+   another plugin, even when the rule the user corrected came from one (it appears
+   between `pw:source` markers in the expanded text). The correction goes into the
+   workspace file and overrides the plugin's rule from there.
+2. **After any include line.** When the target file contains a
+   `<!-- pw:include plugin:... -->` line, write the new rule after it, so the new
+   rule takes precedence over the included rules. Leave the include line unchanged.
+3. **An imported copy may be edited directly.** A file whose first line is
+   `<!-- pw:imported ... -->` is the workspace's own copy; add the rule to it and keep
+   that header as the first line.
+
 ### If the file exists:
 1. **Read it first** using the `Read` tool.
 2. Proceed to Step 4 (update).
