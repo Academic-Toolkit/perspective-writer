@@ -73,10 +73,16 @@ one of four additional disclosures: `include-unresolved` (plugin not installed, 
 ambiguous, path unsafe, line malformed), `include-nested`, `import-stale`, and `redirect-unresolved`.
 A missing plugin is reported as missing, not treated as "this subject has no rules".
 
+Before a draft, perspective-writer also names every rule file that came from another plugin (plugin,
+version, path), so you can see which rules shaped it. Included and imported rules are read as
+instructions, exactly like your own: include or import only plugins you trust as much as your workspace.
+
 Only `plugins/perspective-writer/scripts/plugin-rules.sh` reads Claude Code's installed-plugin record
 (`~/.claude/plugins/installed_plugins.json`, `version: 2`); it fails with exit code 3 rather than
 guessing when that format changes, and the consistency check fails if anything else in the plugin
-reads the record. `tests/plugin-rules.test.sh` covers expansion and import against a fake record;
+reads the record. When a plugin is installed more than once, a project- or local-scope install counts
+only for rules files inside its project (local over project over user). The script needs `jq`, and
+`shasum` or `sha256sum`. `tests/plugin-rules.test.sh` covers expansion and import against a fake record;
 `PW_TEST_BASH=/bin/bash /bin/bash tests/plugin-rules.test.sh` runs it under macOS's bash 3.2.
 
 ## Pre-send review vs. long-term learning

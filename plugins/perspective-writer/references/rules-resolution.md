@@ -67,8 +67,20 @@ keyed `<name>@<marketplace>` in Claude Code's installed-plugin record. The rules
 therefore exist once, in the plugin, and a plugin update takes effect without
 touching the workspace. `@<marketplace>` may be omitted only when exactly one
 installed plugin has that name. An include is followed once: an include line
-inside the included file is not expanded. Every other line of the file is the
-workspace's own rules.
+inside the included file is not expanded. A line inside a fenced code block
+(opened by ```` ``` ```` or `~~~`) is never an include line, so a rules file can
+show the syntax. Every other line of the file is the workspace's own rules.
+
+When the record lists several installs of one plugin, a project- or local-scope
+install counts only for rules files inside its project; among the installs that
+count, local wins over project, and project over user. A plugin installed only for
+other projects is reported as `include-unresolved`, not read.
+
+**Included and imported rules are trusted.** Their text is read as rules, that is,
+as instructions to the drafter and the rules auditor, exactly like the workspace's
+own files. Include or import only plugins you trust as much as the workspace itself;
+the source markers and the source disclosure (see **Resolution order**) show where
+each rule came from, but they do not limit what it can say.
 
 **Import.** A copy of the plugin's file, written into this namespace by the
 **import** operation, whose first line records where it came from:
@@ -129,7 +141,16 @@ path:<path> -->` and `<!-- pw:source end -->`, checks an imported copy against i
 source, and writes each problem to stderr as one line
 `pw:disclosure <kind> <target> — <reason>` (see **Additional disclosures**). The
 expanded text, not the raw file, is what the drafter and the rules auditor read. A
-file with no include line and no imported header expands to itself.
+file with no include line and no imported header expands to itself. Inside included
+content the text `pw:source` and `pw:imported` is rewritten to `pw-literal:...`, so
+an included file cannot forge the end marker and make its later lines look like the
+workspace's own.
+
+**Source disclosure.** Before presenting a draft, a skill names every rule file that
+came from another plugin: for each `pw:source begin` marker and each imported header
+in the expanded text, the plugin key, version and path. This is not a problem
+disclosure and does not change the status; it is how the user sees which plugin's
+rules, at which version, shaped the draft.
 
 When expansion exits with code 3, the installed-plugin record could not be read
 and the file's includes were not expanded. Treat this as an `include-unresolved`
@@ -155,6 +176,12 @@ stated rather than inferred from the output.
 These three are the only statuses. A problem with an included or imported rule
 file, or a redirect that leads nowhere, does not add a status: it is an additional
 disclosure reported alongside whichever status resolve returned.
+
+When the status is `generic` and resolve also produced `include-unresolved` or
+`redirect-unresolved`, the `generic` disclosure must not be phrased as "there are no
+rules". State both facts: no rules for this subject were found, and the named rule
+file exists but the rules it points to could not be loaded. Saying only that there
+are no rules is the wrong `generic` this contract warns against.
 
 ## Additional disclosures
 

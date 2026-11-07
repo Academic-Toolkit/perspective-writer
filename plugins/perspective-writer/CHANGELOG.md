@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **引用與匯入其他 plugin 的規則**（Academic-Toolkit/perspective-writer#25）。工作區的 genre／subject 規則檔可以有一行 `<!-- pw:include plugin:<name>@<marketplace>/<path> -->`，解析時換成該 plugin 目前安裝版本裡那個檔案的內容，前後包上 `pw:source` 來源標記；只跟一次，被引用檔裡的 include 不展開。plugin 端的慣例位置是 `<plugin-root>/perspective-writer/genres/`、`subjects/`。
 - `scripts/plugin-rules.sh`：`expand` 與 `import` 兩個子指令，是 plugin 裡唯一讀 Claude Code 已安裝 plugin 紀錄的地方。紀錄形狀不是 `version: 2` 時以結束碼 3 失敗，不猜路徑。路徑必須是相對路徑、不含 `..`、以 `.md` 結尾，解析符號連結後仍在 plugin 的安裝目錄內。相容 macOS 內建的 bash 3.2。
 - `skills/import-rules`：把 plugin 的規則檔匯入成工作區副本，第一行記下來源 plugin、版本、路徑、sha256 與日期；目標已存在時不覆寫，使用者看過並明確同意才加 `--force`。
-- `tests/plugin-rules.test.sh`：以假的已安裝紀錄驅動，34 個案例，涵蓋 #25 驗收條件 1–4；`PW_TEST_BASH=/bin/bash` 可在 bash 3.2 下跑。CI 在 push 到 main 時一併執行。
+- `tests/plugin-rules.test.sh`：以假的已安裝紀錄驅動，44 個案例，涵蓋 #25 驗收條件 1–4；`PW_TEST_BASH=/bin/bash` 可在 bash 3.2 下跑。CI 在 push 到 main 時一併執行。
+- verify 第 1 輪後的修正：同一個 plugin 裝了不只一份時，project／local 範圍的安裝只算在它自己的專案內（local 優先於 project、project 優先於 user），只裝在別的專案就回報 `include-unresolved`；紀錄逐筆驗證形狀；version 不是單純的版本字串時記成 `unknown`；import 不寫進任何 plugin 的安裝目錄（含經由工作區裡的符號連結）；code fence 內的 include 範例不展開；被引用內容不能偽造 `pw:source` 標記；被引用檔裡格式不對的 include 也回報。契約與 Phase 0b 補上「來源揭露」（起草前列出每個來自其他 plugin 的規則檔的 plugin、版本、路徑），以及 `generic` 遇到未解析的 include 時不可說成「沒有規則」。
 - `scripts/check-contract-consistency.sh` 第 7 組斷言：契約與 `plugin-rules.sh` 以外的檔案提到已安裝紀錄的檔名或其安裝路徑欄位，或伸進 plugin 目錄裡的快取路徑，就失敗並指名檔案（本檔也在掃描範圍內，所以這裡不寫出那些字）。已用暫存複本做負面測試。
 
 ### Changed

@@ -258,6 +258,17 @@ the status is. They never change the status: `subject-specific` stays
 code 3, the installed-plugin record could not be read: report it as
 `include-unresolved` for that file, naming the file, and read the raw file.
 
+When the status is `generic` and there is an `include-unresolved` or
+`redirect-unresolved` disclosure, do not say "this subject has no rules": say that no
+subject rules were found and that the named rule file exists but its included rules
+could not be loaded (*Outcome statuses* in the contract).
+
+**Source disclosure.** Also before presenting any draft, name every rule file that
+came from another plugin: for each `pw:source begin` marker and each imported header
+in the expanded text, the plugin key, version and path (*Resolution order* in the
+contract). Without it the user cannot tell which plugin's rules, at which version,
+shaped the draft.
+
 ---
 
 ## Phase 1: Understand the Writer
