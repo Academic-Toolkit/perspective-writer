@@ -14,8 +14,10 @@
 #           <!-- pw:source begin plugin:<key> version:<version> path:<path> -->
 #           <!-- pw:source end -->
 #       All other lines are printed unchanged and in order. A line that cannot be
-#       expanded is printed unchanged. Lines inside a fenced code block (``` or ~~~) are
-#       never include lines. Included content is not expanded again: an include line
+#       expanded is printed unchanged. Code is never an include line: a fenced block
+#       (``` or ~~~, closed only by the same character at least as long as the opening
+#       run) or an indented code line (four spaces or a tab). An include line may be
+#       indented by at most three spaces. Included content is not expanded again: an include line
 #       inside it is printed as is and reported. Inside included content, the text
 #       "pw:source" and "pw:imported" is rewritten to "pw-literal:...", so a plugin file
 #       cannot forge the markers that delimit it. If the first line is an imported header
@@ -59,19 +61,25 @@
 #
 # Exit codes
 #   expand  0 done (disclosures may be present) | 2 usage error or unreadable file
-#           3 the record is needed but unreadable or not the version 2 shape
+#           3 the record is needed but unreadable or not the version 2 shape, or a
+#             required tool (jq, shasum or sha256sum) is missing
 #   import  0 written | 2 usage error, unresolvable reference, unsafe path, or a target
-#           that cannot be written | 3 the record is unreadable or not the version 2
-#           shape | 4 the target exists and --force is absent
+#           that is a directory or cannot be written | 3 as for expand
+#           | 4 the target exists and --force is absent
 #
 # Requires jq, and shasum or sha256sum. Written for bash 3.2, the version macOS ships.
 
 set -uo pipefail
 
 RECORD="${PW_INSTALLED_PLUGINS:-$HOME/.claude/plugins/installed_plugins.json}"
-INCLUDE_RE='^[[:space:]]*<!-- pw:include plugin:([^[:space:]]+) -->[[:space:]]*$'
+INCLUDE_RE='^ {0,3}<!-- pw:include plugin:([^[:space:]]+) -->[[:space:]]*$'
 IMPORTED_RE='^<!-- pw:imported plugin:([^[:space:]]+) version:([^[:space:]]+) path:([^[:space:]]+) sha256:([0-9a-f]{64}) date:([0-9]{4}-[0-9]{2}-[0-9]{2}) -->$'
-FENCE_RE='^[[:space:]]*(```|~~~)'
+MENTION_RE='<!--[[:space:]]*pw:include'
+FENCE_OPEN_RE='^ {0,3}(`{3,}|~{3,})'
+FENCE_CLOSE_RE='^ {0,3}(`{3,}|~{3,})[[:space:]]*$'
+INDENTED_RE='^(    |	)'
+FENCE_CH=""          # character of the open fence (` or ~), empty outside a fence
+FENCE_N=0            # length of the open fence's opening run
 IMPORTED_PREFIX='<!-- pw:imported '
 SLUG_RE='^[a-z0-9][a-z0-9-]*$'
 SEP=$'\x1f'          # field separator for record rows: not IFS whitespace, so empty fields survive
@@ -229,12 +237,36 @@ resolve_ref() {
 
 # --- expand -----------------------------------------------------------------
 
-# has_unfenced <ERE> <file>: true when a line outside fenced code blocks matches.
+# in_code <line>: true when <line> is code, so never an include line: a fence delimiter,
+# a line inside a fenced block, or an indented code line (four spaces or a tab). Tracks
+# the open fence in FENCE_CH / FENCE_N: a fence closes only on a line of the same
+# character, at least as long as the opening run, with nothing after it. A caller that
+# scans a separate file declares its own `local FENCE_CH="" FENCE_N=0`.
+in_code() {
+  local line="$1" run
+  if [ -z "$FENCE_CH" ]; then
+    if [[ "$line" =~ $FENCE_OPEN_RE ]]; then
+      run="${BASH_REMATCH[1]}"; FENCE_CH="${run:0:1}"; FENCE_N=${#run}
+      return 0
+    fi
+    [[ "$line" =~ $INDENTED_RE ]] && return 0
+    return 1
+  fi
+  if [[ "$line" =~ $FENCE_CLOSE_RE ]]; then
+    run="${BASH_REMATCH[1]}"
+    if [ "${run:0:1}" = "$FENCE_CH" ] && [ "${#run}" -ge "$FENCE_N" ]; then FENCE_CH=""; FENCE_N=0; fi
+  fi
+  return 0
+}
+
+# has_unfenced <ERE> <file>: true when a line that is not code matches <ERE>.
 has_unfenced() {
-  awk -v re="$1" '
-    /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
-    !fence && $0 ~ re { found = 1; exit }
-    END { exit !found }' "$2"
+  local re="$1" line FENCE_CH="" FENCE_N=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    in_code "$line" && continue
+    [[ "$line" =~ $re ]] && return 0
+  done <"$2"
+  return 1
 }
 
 # check_imported <file> <first line>: disclose import-stale when the source moved on.
@@ -258,22 +290,17 @@ check_imported() {
 
 # emit_included <line ending>: print R_FILE wrapped in source markers.
 emit_included() {
-  local ending="$1" inner fence=0 n=0
+  local ending="$1" inner n=0 FENCE_CH="" FENCE_N=0
   printf '<!-- pw:source begin plugin:%s version:%s path:%s -->\n' "$R_KEY" "$R_VERSION" "$R_PATH"
   while IFS= read -r inner || [ -n "$inner" ]; do
     n=$((n + 1))
-    if [[ "$inner" =~ $FENCE_RE ]]; then
-      fence=$((1 - fence))
-    elif [ "$fence" -eq 0 ]; then
+    if ! in_code "$inner"; then
       if [[ "$inner" =~ $INCLUDE_RE ]]; then
         disclose include-nested "plugin:${BASH_REMATCH[1]}" \
           "found inside plugin:$R_KEY/$R_PATH; includes are followed once, so this line is not expanded"
-      else
-        case "$inner" in
-          *'<!--'*'pw:include'*)
-            disclose include-nested "plugin:$R_KEY/$R_PATH:line:$n" \
-              "a malformed include line inside the included file; it is not expanded" ;;
-        esac
+      elif [[ "$inner" =~ $MENTION_RE ]]; then
+        disclose include-nested "plugin:$R_KEY/$R_PATH:line:$n" \
+          "a malformed include line inside the included file; it is not expanded"
       fi
     fi
     inner="${inner//pw:source/pw-literal:source}"
@@ -285,7 +312,7 @@ emit_included() {
 
 cmd_expand() {
   [ $# -eq 1 ] || { usage >&2; exit 2; }
-  local f="$1" first="" line ending lineno=0 ref fence=0
+  local f="$1" first="" line ending lineno=0 ref
   [ -f "$f" ] && [ -r "$f" ] || die 2 "cannot read $f"
 
   IFS= read -r first <"$f" || true
@@ -294,7 +321,7 @@ cmd_expand() {
 
   # No include line outside code fences and no imported header: print verbatim, never
   # touch the record.
-  if [ "$has_header" -eq 0 ] && ! has_unfenced 'pw:include' "$f"; then
+  if [ "$has_header" -eq 0 ] && ! has_unfenced "$MENTION_RE" "$f"; then
     cat "$f"
     exit 0
   fi
@@ -312,10 +339,7 @@ cmd_expand() {
   while true; do
     if IFS= read -r line; then ending=$'\n'; else [ -n "$line" ] || break; ending=""; fi
     lineno=$((lineno + 1))
-    if [[ "$line" =~ $FENCE_RE ]]; then
-      fence=$((1 - fence))
-      printf '%s%s' "$line" "$ending"
-    elif [ "$fence" -eq 1 ]; then
+    if in_code "$line"; then
       printf '%s%s' "$line" "$ending"
     elif [[ "$line" =~ $INCLUDE_RE ]]; then
       ref="${BASH_REMATCH[1]}"
@@ -326,11 +350,9 @@ cmd_expand() {
         printf '%s%s' "$line" "$ending"
       fi
     else
-      case "$line" in
-        *'<!--'*'pw:include'*)
-          disclose include-unresolved "line:$lineno" "this line mentions pw:include but is not a well-formed include line <!-- pw:include plugin:<name>[@<marketplace>]/<path> -->"
-          ;;
-      esac
+      if [[ "$line" =~ $MENTION_RE ]]; then
+        disclose include-unresolved "line:$lineno" "this line starts like an include but is not a well-formed include line <!-- pw:include plugin:<name>[@<marketplace>]/<path> -->"
+      fi
       printf '%s%s' "$line" "$ending"
     fi
     [ -n "$ending" ] || break
@@ -370,6 +392,9 @@ cmd_import() {
   pick_sha_tool
   resolve_ref "$ref" || die 2 "cannot import plugin:$ref — $R_REASON"
 
+  if [ -d "$target" ]; then
+    die 2 "$target is a directory (or a link to one); refusing to import over it"
+  fi
   if [ -e "$target" ] && [ "$force" -eq 0 ]; then
     die 4 "$target already exists; pass --force to replace it"
   fi
@@ -390,7 +415,7 @@ cmd_import() {
   sha=$(sha256_of "$R_FILE")
   date=$(date +%Y-%m-%d)
   mkdir -p "$(dirname "$target")" || die 2 "cannot create the directory for $target"
-  tmp="$target.tmp.$$"
+  tmp=$(mktemp "$(dirname "$target")/.pw-import.XXXXXX") || die 2 "cannot create a temporary file next to $target"
   if { printf '<!-- pw:imported plugin:%s version:%s path:%s sha256:%s date:%s -->\n' \
          "$R_KEY" "$R_VERSION" "$R_PATH" "$sha" "$date"
        cat "$R_FILE"; } >"$tmp" && mv -f "$tmp" "$target"; then

@@ -745,6 +745,64 @@ case_consistency_check_flags_record_reader() {
 }
 
 # ---------------------------------------------------------------------------
+# Verify round 2 findings (#25): fence lengths, indented code, plain comments,
+# import onto a directory
+# ---------------------------------------------------------------------------
+
+case_nested_fence_lengths() {
+  new_case fence_lengths
+  plugin tools@a 1.0.0
+  file "$PDIR/rules.md" $'Real rule.\n'
+  write_record
+  file "$WS/genres/g.md" "\`\`\`\`markdown
+\`\`\`
+$(include tools@a/example.md)
+\`\`\`
+\`\`\`\`
+$(include tools@a/rules.md)
+"
+  run expand "$WS/genres/g.md"
+  expect_rc 0
+  expect_no_disclosure
+  grep -qF 'Real rule.' "$T/out" || fail "the include after a four-backtick fence was not expanded"
+  grep -qF '<!-- pw:include plugin:tools@a/example.md -->' "$T/out" || fail "the fenced example include was altered"
+}
+
+case_indented_include_is_code() {
+  new_case indented
+  export PW_INSTALLED_PLUGINS="$T/does-not-exist.json"
+  file "$WS/genres/g.md" "Example:
+
+    $(include tools@a/rules.md)
+"
+  run expand "$WS/genres/g.md"
+  expect_rc 0
+  expect_no_disclosure
+  expect_out_equals_file "$WS/genres/g.md"
+}
+
+case_plain_comment_not_flagged() {
+  new_case plain_comment
+  export PW_INSTALLED_PLUGINS="$T/does-not-exist.json"
+  file "$WS/genres/g.md" $'Rule.\n<!-- note: the pw:include syntax is described in the README -->\n'
+  run expand "$WS/genres/g.md"
+  expect_rc 0
+  expect_no_disclosure
+  expect_out_equals_file "$WS/genres/g.md"
+}
+
+case_import_force_onto_directory() {
+  new_case import_dir
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" $'X rules.\n'
+  write_record
+  mkdir -p "$WS/genres/x.md"
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS" --force
+  expect_rc 2
+  [ -z "$(find "$WS/genres" -type f)" ] || fail "import left a file behind: $(find "$WS/genres" -type f)"
+}
+
+# ---------------------------------------------------------------------------
 # Usage
 # ---------------------------------------------------------------------------
 
