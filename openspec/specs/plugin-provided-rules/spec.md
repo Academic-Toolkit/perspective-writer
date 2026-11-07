@@ -162,7 +162,7 @@ Apart from the resolution contract, `plugin-rules.sh` SHALL be the only file in 
 ---
 ### Requirement: Skills that compare against existing rules read them expanded
 
-Every skill that resolves or persists rules SHALL read each file resolve returned, or each target it will write, through `plugin-rules.sh expand`, and SHALL compare, deduplicate and propose rules against that expansion rather than the raw file. It SHALL tell the user every additional disclosure the expansion produced. Writing SHALL still go to the raw workspace file, after any include line. The consistency check SHALL fail when a skill that mentions resolve or persist does not mention `plugin-rules.sh expand`.
+Every skill that resolves or persists rules SHALL read each file resolve returned, or each target it will write, through `plugin-rules.sh expand`, and SHALL compare, deduplicate and propose rules against that expansion rather than the raw file. It SHALL tell the user every additional disclosure the expansion produced. A target that does not exist yet has no rules to compare and is not expanded. Writing SHALL still go to the raw workspace file, after any include line. A skill that restricts its tools SHALL allow `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *)`. The consistency check SHALL fail when a skill that refers to the resolve or persist operation (it names the contract's *Resolution order*, `resolve(`, **persist**, or the persist-limits heading) does not mention `plugin-rules.sh expand`, or restricts its tools without allowing that script.
 
 #### Scenario: Workspace file is a single include line
 

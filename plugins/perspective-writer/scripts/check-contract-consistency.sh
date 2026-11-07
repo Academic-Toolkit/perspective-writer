@@ -165,10 +165,16 @@ fi
 # does (#29).
 READER_RE='Resolution order|resolve\(|\*\*persist\*\*|persist 只寫|Persist writes'
 EXPAND_RE='plugin-rules\.sh"? expand'
-unexpanded=""
+unexpanded=""; ungranted=""
 for skill in "$SKILLS"/*/SKILL.md; do
   grep -qE "$READER_RE" "$skill" || continue
   grep -qE "$EXPAND_RE" "$skill" || unexpanded="$unexpanded$skill"$'\n'
+  # A skill that restricts its tools must be allowed to run the script it is told to
+  # run; otherwise the expand step is blocked and the skill falls back to the raw file.
+  tools=$(grep -m1 '^allowed-tools:' "$skill" || true)
+  if [ -n "$tools" ] && ! printf '%s' "$tools" | grep -qF 'Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh'; then
+    ungranted="$ungranted$skill"$'\n'
+  fi
 done
 if [ -n "$unexpanded" ]; then
   bad "a skill reads resolved rules without expanding them:"
@@ -176,6 +182,13 @@ if [ -n "$unexpanded" ]; then
   note "run scripts/plugin-rules.sh expand on each file and read its stdout, as Phase 0b does."
 else
   ok "every skill that reads resolved rules expands them first"
+fi
+if [ -n "$ungranted" ]; then
+  bad "a skill told to run plugin-rules.sh expand restricts its tools without allowing it:"
+  printf '%s' "$ungranted" | sed "s|^$ROOT/|    |"
+  note "add Bash(\${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *) to its allowed-tools."
+else
+  ok "every skill that expands rules may run plugin-rules.sh"
 fi
 
 echo

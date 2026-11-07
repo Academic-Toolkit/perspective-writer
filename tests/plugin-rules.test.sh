@@ -759,6 +759,21 @@ case_consistency_check_flags_unexpanded_reader() {
   grep -qF 'skills/save-feedback/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the unexpanded skill"
 }
 
+case_consistency_check_flags_reader_without_bash_grant() {
+  new_case consistency_bash_grant
+  local repo="$T/repo" check skill
+  mkdir -p "$repo"
+  cp -R "$ROOT/plugins" "$ROOT/README.md" "$repo/"
+  check="$repo/plugins/perspective-writer/scripts/check-contract-consistency.sh"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_clean" 2>&1
+  [ $? -eq 0 ] || fail "consistency check fails on a clean copy: $(tail -3 "$T/cc_clean")"
+  skill="$repo/plugins/perspective-writer/skills/role-calibrator/SKILL.md"
+  sed 's/Bash(\${CLAUDE_PLUGIN_ROOT}\/scripts\/plugin-rules\.sh \*), //' "$skill" >"$T/rc" && cp "$T/rc" "$skill"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_bad" 2>&1
+  [ $? -eq 1 ] || fail "consistency check did not fail when a rule-reading skill cannot run plugin-rules.sh"
+  grep -qF 'skills/role-calibrator/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the skill without the grant"
+}
+
 # ---------------------------------------------------------------------------
 # Verify round 2 findings (#25): fence lengths, indented code, plain comments,
 # import onto a directory
