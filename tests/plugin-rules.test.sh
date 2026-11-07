@@ -818,6 +818,40 @@ case_usage_errors() {
   expect_rc 2
 }
 
+# 2.6 (#28) Import refuses a source that contains an include line outside code
+
+case_import_refuses_source_with_include() {
+  new_case import_refuses_include
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n%s\n' "$(include other@b/genres/y.md)")"
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 2
+  expect_err_has "plugin:tools@a/genres/x.md"
+  expect_err_has "include"
+  [ ! -e "$WS/genres/x.md" ] || fail "import wrote a copy of a source that contains an include line"
+}
+
+case_import_refuses_source_with_malformed_include() {
+  new_case import_refuses_malformed
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" $'X rules.\n<!-- pw:include other@b/genres/y.md -->\n'
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 2
+  [ ! -e "$WS/genres/x.md" ] || fail "import wrote a copy of a source that contains a malformed include line"
+}
+
+case_import_allows_include_inside_code() {
+  new_case import_include_in_code
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n\n```markdown\n%s\n```\n' "$(include other@b/genres/y.md)")"
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 0
+  check_imported_copy "$WS/genres/x.md" "$PDIR/genres/x.md" tools@a 1.2.0 genres/x.md
+}
+
 # ---------------------------------------------------------------------------
 
 for c in $(declare -F | awk '{print $3}' | grep '^case_'); do
