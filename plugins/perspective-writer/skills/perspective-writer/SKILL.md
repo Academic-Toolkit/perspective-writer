@@ -220,6 +220,23 @@ and no outcome is recorded, stop and say which lookup was not performed. The gat
 conditioned on the lookup having run, not on a rules file existing — see the
 *Load gate* section of the contract for why.
 
+**Expand each returned file, then read the expansion.** For every file resolve
+returned, in the returned order, run
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file> 2><disclosures-file>
+```
+
+and read its stdout instead of the raw file (*Resolution order* in the contract). The
+Bash tool merges stdout and stderr, so send stderr to a file of its own: the
+`pw:disclosure` lines go to the user, not into the rules text that the rules auditor
+judges line by line. A
+workspace rule file can carry a `pw:include` line that stands for another plugin's
+rules; the raw file shows only that one comment line, and drafting from it means
+drafting without those rules. Wherever this skill later says "the files resolve
+returned" or 規則檔全文, it means this expanded text. Do not locate another plugin's
+files yourself.
+
 Then act on the status (*Outcome statuses* in the contract):
 
 | Status | What you do |
@@ -234,6 +251,28 @@ exactly why the absence has to be stated rather than left for the user to notice
 
 A `generic` outcome does **not** trigger refusal. Writing to someone for the first
 time is a normal path, not a failure.
+
+**Additional disclosures.** Collect every line of the form
+`pw:disclosure <kind> <target> — <reason>` that expand printed on stderr
+(*Additional disclosures* in the contract). Before presenting any draft, tell the
+user each one with its target, in addition to the status disclosure and whatever
+the status is. They never change the status: `subject-specific` stays
+`subject-specific` when an included genre file is unresolved. When expand exits with
+code 3, the installed-plugin record could not be read or a tool it needs is missing;
+when the script cannot be run at all (not found, not executable), the result is the
+same. In both cases report `include-unresolved` for that file, naming the file and
+the reason, and read the raw file.
+
+When the status is `generic` and there is an `include-unresolved` or
+`redirect-unresolved` disclosure, do not say "this subject has no rules": say that no
+subject rules were found and that the named rule file exists but its included rules
+could not be loaded (*Outcome statuses* in the contract).
+
+**Source disclosure.** Also before presenting any draft, name every rule file that
+came from another plugin: for each `pw:source begin` marker and each imported header
+in the expanded text, the plugin key, version and path (*Resolution order* in the
+contract). Without it the user cannot tell which plugin's rules, at which version,
+shaped the draft.
 
 ---
 
@@ -328,7 +367,7 @@ anti-pattern 表之後、5a 之前，把 Phase 0b resolve 回傳的規則檔**�
 
 > **為什麼要有這一步**：2026-10-02 一封請示信，陳老師的規則檔早就寫了「請示用『是否可能』比『是否可以』軟」，起草時讀過，草稿仍寫成「是否可以」。上面的 anti-pattern 表是 core 通用的，查不到某位收件人專屬的條目；5c 的三軸 lens 也沒有「對照規則檔」這一軸。
 
-**讀者**：由起草的 agent 派一個**獨立 subagent**，同模型家族即可。**只給兩樣**：規則檔全文（resolve 回傳的所有檔案，照回傳順序），與要交付的草稿；重新對照與 Phase 6 修改輪時，另加一份改動處清單。**不給**：Phase 1–3 的聲音模型、使用者對這封信說過的話、起草過程。讀者只需要規則與草稿。
+**讀者**：由起草的 agent 派一個**獨立 subagent**，同模型家族即可。**只給兩樣**：規則檔全文（resolve 回傳的所有檔案，照回傳順序，每個檔案都是 Phase 0b 以 `plugin-rules.sh expand` 展開後的輸出，含 `pw:source` 來源標記），與要交付的草稿；不給原始檔或檔案路徑：原始檔裡的 `pw:include` 只是一行註解，讀者只有 Read 工具，展開不了，拿到它等於沒拿到那些規則。重新對照與 Phase 6 修改輪時，另加一份改動處清單。**不給**：Phase 1–3 的聲音模型、使用者對這封信說過的話、起草過程。讀者只需要規則與草稿。
 
 **派工**：用 plugin 自帶的 `perspective-writer:rules-auditor`（定義在 `agents/rules-auditor.md`），不用內建的 general-purpose。一般 subagent 啟動時會載入使用者的整個 CLAUDE.md 層級（含 `~/.claude/CLAUDE.md`，裡面有使用者的身分資料與全域指示），上面「不給」的清單於是名義上成立、實際上沒有。`rules-auditor` 的 frontmatter 設了 `omitClaudeMd: true`，工具只留 `Read`。`omitClaudeMd` 需要 Claude Code v2.1.271 以上；更舊的版本會無聲忽略這個欄位，agent 照常運作，只是回到載入 CLAUDE.md 的狀態。plugin 更新後要重啟 Claude Code（或 `/reload-plugins`）才會出現新 agent；派工時若指出該 agent 不存在，改用 general-purpose 派同一份委派訊息，並在 Phase 6 附一行「（規則檔對照者未隔離 CLAUDE.md）」。這是換派工對象，不是降級，也不算重試。
 
@@ -338,6 +377,8 @@ anti-pattern 表之後、5a 之前，把 Phase 0b resolve 回傳的規則檔**�
 下面有一份「寫給某位收件人的規則檔」和一份要寄出的草稿。請把規則檔裡的條目逐一列出，每一條都要寫出判定，不可省略任何一條。
 
 「條目」指規則檔裡每一個以規則形式寫出的內容：表格裡的一列「避免／改用」、帶「判準」的段落、「不要／不得」句、紅線、事實固定點。一條規則包含多個要求時，按要求拆開，各算一條；同一內容符合多種形式時只算一次。
+
+`<!-- pw:source begin ... -->` 與 `<!-- pw:source end -->` 之間的條目來自其他 plugin，照常逐條判定；標記本身不是條目。同一個檔案裡，寫在來源標記之後、與標記內某一條矛盾的條目優先；被它覆寫的那一條判定為「不適用」，並註明被哪一條覆寫。
 
 每一條用一行：
 
@@ -686,7 +727,11 @@ there is no human to interview mid-pass.
   human. There is nobody to disclose to and no drafting decision to gate, so the
   refuse-if-no-lookup gate and the spoken disclosure are both out of scope — but the
   lookup itself needs no human and is what produces the outcome the `status=` header
-  carries back to the consumer.
+  carries back to the consumer. The lookup includes expanding each returned file with
+  `plugin-rules.sh expand` (contract: *Resolution order*), so rules another plugin
+  supplies through an include line reach the calibration too. Additional disclosures
+  are not reported in this mode and the status header keeps its format; whether a
+  later consumer-contract version should carry them is an open question.
 - ***Simulate, Don't Compose* runs internally** — simulate the writer's voice from the provided
   rules + `context` line before touching the draft (simulation is what makes
   this calibration rather than copy-editing).

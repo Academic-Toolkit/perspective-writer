@@ -136,6 +136,28 @@ if [ -d "$AGENTS" ]; then
   [ "$agents_ok" -eq 1 ] && ok "every plugin agent omits CLAUDE.md, is read-only, and is dispatched by a skill"
 fi
 
+# --- 7. Only plugin-rules.sh reads the installed-plugin record --------------
+# The record is Claude Code's internal format and can change. Every read of it, and
+# every path built into another plugin's installed directory to reach a file there,
+# goes through scripts/plugin-rules.sh, so that a format change fails in one place and
+# loudly (exit 3). A skill that read the record itself would keep working until the
+# format moved, then stop loading the plugin's rules without any error.
+#
+# Matched: the record's filename, its `installPath` field, and a cache path that goes
+# below a plugin's directory (cache/<marketplace>/<plugin>/...). Not matched: probes such
+# as `ls -d ~/.claude/plugins/cache/*/<plugin>` in the core skill, which only test that
+# a plugin is installed and read nothing inside it.
+RECORD_RE='installed_plugins\.json|installPath|plugins/cache/[^/[:space:]]+/[^/[:space:]]+/[^[:space:]]'
+RECORD_ALLOW_RE='references/rules-resolution\.md$|scripts/plugin-rules\.sh$|scripts/check-contract-consistency\.sh$'
+hits=$(grep -rlE "$RECORD_RE" "$PLUGIN" 2>/dev/null | grep -vE "$RECORD_ALLOW_RE" || true)
+if [ -n "$hits" ]; then
+  bad "a file other than plugin-rules.sh reads the installed-plugin record or builds a path into a plugin:"
+  printf '%s\n' "$hits" | sed "s|^$ROOT/|    |"
+  note "call scripts/plugin-rules.sh (expand or import) instead."
+else
+  ok "only plugin-rules.sh reads the installed-plugin record"
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "contract consistency: OK"

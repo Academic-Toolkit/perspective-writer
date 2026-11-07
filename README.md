@@ -13,6 +13,7 @@ Core discipline: **Tarski's T-Schema**. Every sentence must have a concrete, ver
 | `role-calibrator` | Adjust correspondence tone per expertise domain (the writer may be junior in one domain, the expert in another) |
 | `draft-learner` | Learn style rules from file-modification diffs during drafting sessions → persist via the resolution contract |
 | `save-feedback` | Capture conversational feedback ("短一點" / "太直接了") into reusable rules — the feedback that never produces a file diff |
+| `import-rules` | Copy a rule file that another installed plugin publishes into the workspace, with a header recording its source, so it can be frozen or edited locally |
 
 **A genre facet is loaded by the core, not triggered on its own.** The core determines the genre in its
 first phase and loads the matching facet from its body. Skill triggering is semantic matching — making
@@ -24,6 +25,65 @@ alone rather than falling back to correspondence conventions from memory.
 Per-subject style rules live in the **target repo**, not in this plugin — relationship context stays with the project it belongs to. Where exactly, and how a skill finds them, is defined by the resolution contract in [`plugins/perspective-writer/references/rules-resolution.md`](plugins/perspective-writer/references/rules-resolution.md): a subject directory holds a genre-independent `core.md` plus on-demand genre facets, under a dot-prefixed namespace that is **not** injected into session context.
 
 Rules that no skill here reads — general writing style, code-comment style — stay in the target repo's injected `.claude/rules/`, because injection is their only delivery mechanism. See the contract's *Split criterion by reader*.
+
+## Rules from other plugins
+
+A domain plugin can ship writing rules for perspective-writer: for example, that a grant proposal
+rests only on published work and public presentations and never cites internal lab meetings. It
+places them under its own root, mirroring the workspace namespace:
+
+```
+<plugin-root>/perspective-writer/
+  genres/<genre-slug>.md
+  subjects/<subject-slug>/core.md
+  subjects/<subject-slug>/<genre-slug>.md
+```
+
+A workspace uses them in one of two ways.
+
+**Include (default).** A line of its own in a workspace genre or subject rule file:
+
+```
+<!-- pw:include plugin:<name>@<marketplace>/<path> -->
+```
+
+for example `<!-- pw:include plugin:grant-rules@example-plugins/perspective-writer/genres/grant-proposal.md -->`.
+When the rules are resolved, the line is replaced by that file from the plugin's installed version,
+between `pw:source` markers naming the plugin, version and path; the rules auditor reads that
+expanded text. The rules exist once, in the plugin, and a plugin update reaches every workspace.
+`@<marketplace>` may be omitted when exactly one installed plugin has that name. An include is
+followed once. Lines the workspace writes after the include line take precedence over the included
+rules, so a workspace can accept a plugin's rules and amend one of them.
+
+**Import.** `/perspective-writer:import-rules`, or directly
+
+```bash
+plugins/perspective-writer/scripts/plugin-rules.sh import plugin:<name>@<marketplace>/<path> --genre <slug>
+```
+
+copies the file into the workspace with a first line recording plugin, version, path, sha256 and date
+(`--subject <slug>` targets a subject's core, and both flags target that subject's facet). Use it to
+freeze the rules a submitted document was written under, or to keep a copy you edit. When the
+plugin's file later changes, resolve discloses `import-stale`; it never overwrites the copy, and the
+import itself refuses to replace an existing file without `--force`.
+
+**Problems are disclosed, never dropped.** They do not add an outcome status — the three statuses
+in the consumer contract below are unchanged — but each is reported to the user before a draft as
+one of four additional disclosures: `include-unresolved` (plugin not installed, file missing, name
+ambiguous, path unsafe, line malformed), `include-nested`, `import-stale`, and `redirect-unresolved`.
+A missing plugin is reported as missing, not treated as "this subject has no rules".
+
+Before a draft, perspective-writer also names every rule file that came from another plugin (plugin,
+version, path), so you can see which rules shaped it. Included and imported rules are read as
+instructions, exactly like your own: include or import only plugins you trust as much as your workspace.
+
+Only `plugins/perspective-writer/scripts/plugin-rules.sh` reads Claude Code's installed-plugin record
+(`~/.claude/plugins/installed_plugins.json`, `version: 2`); it fails with exit code 3 rather than
+guessing when that format changes, and the consistency check fails if anything else in the plugin
+reads the record. When a plugin is installed more than once, a project- or local-scope install counts
+only for rules files inside its project (local over project over user). The script needs `jq`, and
+`shasum` or `sha256sum`. `tests/plugin-rules.test.sh` covers expansion and import against a fake record;
+`PW_TEST_BASH=/bin/bash /bin/bash tests/plugin-rules.test.sh` runs it under macOS's bash 3.2.
 
 ## Pre-send review vs. long-term learning
 
@@ -77,8 +137,9 @@ pre-send check. Either plugin works alone; neither declares the other as a depen
 
 `plugins/perspective-writer/scripts/check-contract-consistency.sh` asserts that every skill agrees
 with the resolution contract: none constructs a storage path of its own, every contract section a
-skill cites exists, the reader-based split criterion still names its exceptions, and the published
-contract still names the three outcome statuses. It also asserts that every agent under `agents/` carries exactly `omitClaudeMd: true`, declares read-only `tools`, and is dispatched by a skill: Claude Code ignores a frontmatter field it does not recognise without any error, so a misspelt `omitClaudeMd` would silently put the user's `CLAUDE.md` back into a reader that is supposed to be blind. It runs on push to `main`.
+skill cites exists, the reader-based split criterion still names its exceptions, the published
+contract still names the three outcome statuses, and no file in the plugin other than the contract
+and `plugin-rules.sh` reads the installed-plugin record or reaches into another plugin's files. It also asserts that every agent under `agents/` carries exactly `omitClaudeMd: true`, declares read-only `tools`, and is dispatched by a skill: Claude Code ignores a frontmatter field it does not recognise without any error, so a misspelt `omitClaudeMd` would silently put the user's `CLAUDE.md` back into a reader that is supposed to be blind. It runs on push to `main`.
 
 It is deliberately **shape-agnostic** — no assertion counts or names skills. The skill set grew from
 four to five when the core/facet split landed and grows with each genre facet; assertions about
