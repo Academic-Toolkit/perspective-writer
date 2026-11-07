@@ -791,6 +791,93 @@ case_consistency_check_flags_invocation_outside_the_grant() {
 }
 
 # ---------------------------------------------------------------------------
+# #27: the calibrate header carries the additional disclosures. The model's output
+# cannot be tested, so these check that the consistency check notices when the
+# README, the skill or the contract stop agreeing on it.
+# ---------------------------------------------------------------------------
+
+consistency_copy() {
+  CC_REPO="$T/repo"
+  mkdir -p "$CC_REPO"
+  cp -R "$ROOT/plugins" "$ROOT/README.md" "$CC_REPO/"
+  CC_CHECK="$CC_REPO/plugins/perspective-writer/scripts/check-contract-consistency.sh"
+  "${PW_TEST_BASH:-bash}" "$CC_CHECK" "$CC_REPO" >"$T/cc_clean" 2>&1
+  [ $? -eq 0 ] || fail "consistency check fails on a clean copy: $(tail -3 "$T/cc_clean")"
+}
+
+expect_consistency_failure() {
+  "${PW_TEST_BASH:-bash}" "$CC_CHECK" "$CC_REPO" >"$T/cc_bad" 2>&1
+  [ $? -eq 1 ] || fail "consistency check did not fail: $1"
+  grep -qF "$2" "$T/cc_bad" || fail "consistency check output lacks '$2': $(grep '^✗' "$T/cc_bad" | head -3)"
+}
+
+case_consistency_flags_drifted_disclosure_kinds() {
+  new_case cc_kinds
+  consistency_copy
+  perl -pi -e 's/`import-stale`, `redirect-unresolved`\. This is the closed set/`redirect-unresolved`. This is the closed set/' "$CC_REPO/README.md"
+  grep -qF '`include-nested`, `redirect-unresolved`. This is the closed set' "$CC_REPO/README.md" || fail "test setup: README kinds line not mutated"
+  expect_consistency_failure "README lists three of the four kinds" "README disclosure kinds"
+}
+
+case_consistency_flags_reordered_disclosure_kinds() {
+  new_case cc_order
+  consistency_copy
+  perl -pi -e 's/`include-unresolved`, `include-nested`, `import-stale`/`include-nested`, `include-unresolved`, `import-stale`/' "$CC_REPO/README.md"
+  expect_consistency_failure "README lists the kinds out of order" "README disclosure kinds"
+}
+
+case_consistency_flags_calibrate_entry_without_attribute() {
+  new_case cc_entry
+  consistency_copy
+  perl -pi -e 's/disclosures=/disclosures:/g' "$CC_REPO/plugins/perspective-writer/skills/perspective-writer/SKILL.md"
+  expect_consistency_failure "the Calibrate-draft entry no longer writes the attribute" "Calibrate-draft entry"
+}
+
+case_consistency_flags_missing_ignore_unknown_attributes() {
+  new_case cc_ignore
+  consistency_copy
+  perl -pi -e 's/SHALL ignore header attributes they do not recognise/may ignore header attributes/' "$CC_REPO/README.md"
+  expect_consistency_failure "the README dropped the ignore-unknown-attributes rule" "ignore unknown header attributes"
+}
+
+case_consistency_flags_new_contract_kind() {
+  new_case cc_newkind
+  consistency_copy
+  perl -pi -e 's/^(\| `redirect-unresolved` \|.*)$/$1\n| `include-loop` | `plugin-rules.sh expand` | test-only kind. |/' "$CC_REPO/plugins/perspective-writer/references/rules-resolution.md"
+  grep -qF '`include-loop`' "$CC_REPO/plugins/perspective-writer/references/rules-resolution.md" || fail "test setup: contract table not mutated"
+  expect_consistency_failure "the contract gained a kind the README does not list" "README disclosure kinds"
+}
+
+# Verify round 1 findings (#27): the README header shape, a padded contract table,
+# and kinds outside lowercase-and-hyphen
+
+case_consistency_flags_readme_without_header_shape() {
+  new_case cc_shape
+  consistency_copy
+  perl -pi -e 's/pw:calibrate v1 status=person disclosures=[a-z,-]*/pw:calibrate v1 status=person/' "$CC_REPO/README.md"
+  grep -qF 'pw:calibrate v1 status=person disclosures=' "$CC_REPO/README.md" && fail "test setup: README header example not removed"
+  grep -qF 'disclosures=' "$CC_REPO/README.md" || fail "test setup: README should still mention disclosures= elsewhere"
+  expect_consistency_failure "the README lost the header shape but still mentions disclosures= elsewhere" "README consumer contract does not specify"
+}
+
+case_consistency_accepts_padded_contract_table() {
+  new_case cc_padded
+  consistency_copy
+  perl -pi -e 's/^\| `(include-unresolved|include-nested|import-stale|redirect-unresolved)` \|/|  `$1`      |/' "$CC_REPO/plugins/perspective-writer/references/rules-resolution.md"
+  grep -qF '|  `import-stale`      |' "$CC_REPO/plugins/perspective-writer/references/rules-resolution.md" || fail "test setup: contract table not padded"
+  "${PW_TEST_BASH:-bash}" "$CC_CHECK" "$CC_REPO" >"$T/cc_pad" 2>&1
+  [ $? -eq 0 ] || fail "consistency check rejects a padded contract table: $(grep '^✗' "$T/cc_pad" | head -2)"
+}
+
+case_consistency_flags_new_kind_outside_lowercase() {
+  new_case cc_kindchars
+  consistency_copy
+  perl -pi -e 's/^(\| `redirect-unresolved` \|.*)$/$1\n| `include_loop2` | `plugin-rules.sh expand` | test-only kind. |/' "$CC_REPO/plugins/perspective-writer/references/rules-resolution.md"
+  grep -qF '`include_loop2`' "$CC_REPO/plugins/perspective-writer/references/rules-resolution.md" || fail "test setup: contract table not mutated"
+  expect_consistency_failure "the contract gained a kind with an underscore and a digit" "README disclosure kinds"
+}
+
+# ---------------------------------------------------------------------------
 # Verify round 2 findings (#25): fence lengths, indented code, plain comments,
 # import onto a directory
 # ---------------------------------------------------------------------------

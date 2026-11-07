@@ -227,6 +227,10 @@ A skill tells the user every additional disclosure, naming its target, **before*
 presenting a draft — for the same reason as the status disclosure: a draft written
 without the missing rules can read well and still be wrong.
 
+In calibrate mode there is no user to tell. The skill returns the kinds, without
+their targets, in the status header instead; the consumer contract in the README
+(promises 5 and 7) says how, and obliges the consumer to tell its own user.
+
 An additional disclosure never changes the status. A subject whose core file was
 found is `subject-specific` even when an included genre file is unresolved; the
 user is told about both.

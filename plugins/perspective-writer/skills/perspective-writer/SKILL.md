@@ -730,9 +730,11 @@ there is no human to interview mid-pass.
   lookup itself needs no human and is what produces the outcome the `status=` header
   carries back to the consumer. The lookup includes expanding each returned file with
   `plugin-rules.sh expand` (contract: *Resolution order*), so rules another plugin
-  supplies through an include line reach the calibration too. Additional disclosures
-  are not reported in this mode and the status header keeps its format; whether a
-  later consumer-contract version should carry them is an open question.
+  supplies through an include line reach the calibration too. There is nobody to
+  tell the additional disclosures to, so they go back in the status header instead:
+  collect every `pw:disclosure` line those expansions write to stderr, plus a
+  `redirect-unresolved` from resolve itself (contract: *Additional disclosures*), and
+  write their kinds into the header as the return shape below says.
 - ***Simulate, Don't Compose* runs internally** — simulate the writer's voice from the provided
   rules + `context` line before touching the draft (simulation is what makes
   this calibration rather than copy-editing).
@@ -749,6 +751,13 @@ there is no human to interview mid-pass.
 - **Return shape**: your final message is line 1 = the status header
   `<!-- pw:calibrate v1 status=person -->` (or `status=generic`), then the
   calibrated draft text — nothing else. No wrapper narration, no file edits.
+  When the lookup produced any additional disclosure, add ` disclosures=<kinds>`
+  inside the header, before ` -->`: each kind that occurred, once, comma-separated
+  without spaces, in the order of the contract's *Additional disclosures* table, for
+  example `<!-- pw:calibrate v1 status=person disclosures=include-unresolved -->`.
+  Kinds only, never the target: a target can be a local path, and the header ends up
+  in the consumer's posted text. With no disclosure there is no attribute and the
+  header stays exactly as above.
 
 ## Phase 6: Present and Iterate
 
