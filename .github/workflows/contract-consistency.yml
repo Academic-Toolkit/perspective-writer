@@ -15,3 +15,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Assert skills agree with the resolution contract
         run: bash plugins/perspective-writer/scripts/check-contract-consistency.sh
+      - name: Test plugin-rules.sh (include expansion and import)
+        run: bash tests/plugin-rules.test.sh

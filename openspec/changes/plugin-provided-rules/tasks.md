@@ -17,6 +17,7 @@
 - ASSUMPTION: include 行前後的空白可以容忍；路徑不得含空白（檔頭與 include 行都以空白分隔欄位）。
 - ASSUMPTION: `import` 寫不出目標檔（目錄無法建立、權限不足）時以結束碼 2 結束；契約沒有列 I/O 失敗，2 是最接近的「目標路徑不可用」。
 - ASSUMPTION（4.1）: 「組出 plugin 安裝路徑」以 `plugins/cache/<marketplace>/<plugin>/` 之後還有路徑為準。core skill 既有的 `ls -d ~/.claude/plugins/cache/*/<plugin>` 只測 plugin 是否安裝、不讀其中檔案，是刻意的設計（同檔「刻意不寫成 script」段），不算違規、不在本 change 改動。
+- ASSUMPTION（4.2）: 在 `.github/workflows/contract-consistency.yml` 加一個 step 跑 `bash tests/plugin-rules.test.sh`。tasks 沒列這一項；workflow 自己的註解寫「只在有人記得時才跑的檢查等於沒有檢查」，測試不進 CI 就會落入同一種情形。
 - ASSUMPTION: 腳本相容 macOS 內建的 bash 3.2（不用 `mapfile`、關聯陣列）；測試以 `PW_TEST_BASH=/bin/bash /bin/bash tests/plugin-rules.test.sh` 另跑一次。
 
 ## 3. 契約與 skill
@@ -29,5 +30,5 @@
 ## 4. 一致性檢查、文件與版本
 
 - [x] 4.1 修改 plugins/perspective-writer/scripts/check-contract-consistency.sh，新增斷言：除契約與 plugin-rules.sh 外，plugin 內沒有檔案提到 `installed_plugins.json` 或組出 plugin 安裝路徑。驗證：在乾淨的樹上執行通過；在暫存副本中把該檔名加進任一 skill 後執行，該斷言失敗並指名檔案。
-- [ ] 4.2 更新 README.md（新增「從其他 plugin 提供規則」一節：目錄慣例、include 語法、import；Skills 表加入 import-rules）、plugins/perspective-writer/CHANGELOG.md（4.12.0 條目），並把 plugins/perspective-writer/.claude-plugin/plugin.json 與 .claude-plugin/marketplace.json 的版本同步改為 4.12.0。驗證：jq 讀出兩處版本皆為 4.12.0，README 的 include 範例與 spec 語法逐字一致。
-- [ ] 4.3 全部完成後執行 bash tests/plugin-rules.test.sh 與 bash plugins/perspective-writer/scripts/check-contract-consistency.sh。驗證：兩者結束碼皆為 0。
+- [x] 4.2 更新 README.md（新增「從其他 plugin 提供規則」一節：目錄慣例、include 語法、import；Skills 表加入 import-rules）、plugins/perspective-writer/CHANGELOG.md（4.12.0 條目），並把 plugins/perspective-writer/.claude-plugin/plugin.json 與 .claude-plugin/marketplace.json 的版本同步改為 4.12.0。驗證：jq 讀出兩處版本皆為 4.12.0，README 的 include 範例與 spec 語法逐字一致。
+- [x] 4.3 全部完成後執行 bash tests/plugin-rules.test.sh 與 bash plugins/perspective-writer/scripts/check-contract-consistency.sh。驗證：兩者結束碼皆為 0。
