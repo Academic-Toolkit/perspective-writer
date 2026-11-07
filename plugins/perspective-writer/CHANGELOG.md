@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.12.2] - 2026-11-08
+
+### Changed
+
+- `plugin-rules.sh import` refuses, with exit code 2, a source file that contains an include line outside code, and asks for an include line instead. A copied include line would have been expanded at the workspace level, unlike the nested include a direct include reports, and the copy's single sha256 could not freeze the files it includes. Copies made earlier are not revisited (#28).
+
 ## [4.12.1] - 2026-11-07
 
 ### Fixed
