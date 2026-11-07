@@ -158,6 +158,39 @@ else
   ok "only plugin-rules.sh reads the installed-plugin record"
 fi
 
+# --- 8. The calibrate header carries the additional disclosures --------------
+# An external consumer reads nothing but the calibrate header. If the README's return
+# shape or the skill's Calibrate-draft entry stops specifying `disclosures=`, or the
+# kinds the README promises drift from the contract's closed set, a consumer either
+# never learns that rules were missing or is told about a kind that no longer exists,
+# and the draft reads well either way. The kinds are compared in order, because the
+# README promises consumers that order. Whether the model actually writes the
+# attribute cannot be checked here; the README says so.
+CORE_SKILL="$SKILLS/perspective-writer/SKILL.md"
+section() { awk -v h="$2" 'index($0, h) == 1 { f = 1; print; next } f && /^## / { exit } f' "$1"; }
+contract_kinds=$(section "$CONTRACT" '## Additional disclosures' \
+  | sed -n 's/^| `\([a-z-]*\)` |.*/\1/p' | paste -sd, -)
+readme_contract=$(section "$README" '## EXTERNAL-CONSUMER CONTRACT')
+readme_kinds=$(printf '%s\n' "$readme_contract" | grep -m1 -F '**Disclosure kinds**' \
+  | sed 's/\. .*//' | grep -o '`[a-z-]*`' | tr -d '`' | paste -sd, -)
+calibrate_entry=$([ -f "$CORE_SKILL" ] && section "$CORE_SKILL" '## Calibrate-draft entry')
+header_ok=1
+if [ -z "$contract_kinds" ]; then
+  bad "contract: no disclosure kinds found in the table under '## Additional disclosures'"; header_ok=0
+elif [ "$readme_kinds" != "$contract_kinds" ]; then
+  bad "README disclosure kinds (${readme_kinds:-none}) differ from the contract's ($contract_kinds), or are out of its order"; header_ok=0
+fi
+grep -qF 'disclosures=' <<<"$readme_contract" \
+  || { bad "README consumer contract does not specify the disclosures= header attribute"; header_ok=0; }
+grep -qF 'SHALL ignore header attributes they do not recognise' <<<"$readme_contract" \
+  || { bad "README consumer contract no longer tells consumers to ignore unknown header attributes"; header_ok=0; }
+if [ -z "$calibrate_entry" ]; then
+  bad "core skill has no '## Calibrate-draft entry' section"; header_ok=0
+elif ! grep -qF 'disclosures=' <<<"$calibrate_entry"; then
+  bad "the skill's Calibrate-draft entry does not write the disclosures= header attribute"; header_ok=0
+fi
+[ "$header_ok" -eq 1 ] && ok "calibrate header carries disclosure kinds that match the contract"
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "contract consistency: OK"

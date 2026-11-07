@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.13.0] - 2026-11-08
+
+### Added
+
+- Calibrate mode returns the additional disclosures to external consumers: when resolving the subject's rules produced any, the status header carries `disclosures=<kinds>` (for example `<!-- pw:calibrate v1 status=person disclosures=include-unresolved -->`). Kinds only, never targets, since the header stays in the consumer's posted text and a target can be a local path. With no disclosure the header is unchanged, and the token stays `v1` (#27).
+- The consumer contract says consumers SHALL ignore header attributes they do not recognise, and SHALL tell their user when `disclosures=` is present, naming the kinds. A consumer that reads the attribute pins 4.13.0. Existing consumers keep working: one that reads only `status=` is unaffected, and is merely out of compliance with the new disclosure obligation (#27).
+- The contract consistency check fails when the README or the skill's Calibrate-draft entry stops specifying the attribute, when the README drops the ignore rule, or when the README's kinds differ from the resolution contract's, in membership or order. Five new test cases cover it (#27).
+
 ## [4.12.1] - 2026-11-07
 
 ### Fixed
