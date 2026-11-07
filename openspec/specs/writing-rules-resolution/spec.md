@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How a subject's and a genre's writing rules are located, ordered and reported: storage layout, resolution order, outcome statuses and the named resolution contract.
+How a subject's and a genre's writing rules are located, ordered and reported: the named resolution contract, storage layout, resolution order, outcome statuses, dual-location conflicts, composition precedence, the split criterion between core and facet, skill-packaged subject rules, and what the external consumer contract states about resolution.
 
 ## Requirements
 
@@ -145,7 +145,7 @@ code:
 ---
 ### Requirement: Outcome statuses
 
-Resolution SHALL return exactly one of three outcome statuses: subject-specific when the subject's core was found at the current location, either as a core file or as a skill packaging the subject's rules, legacy when resolution succeeded through the legacy location or a redirect placeholder, and generic when no subject rules were found at any source the resolution order consults. A problem with an included or imported rule file, or a redirect placeholder that leads nowhere, SHALL NOT add a status; it is reported as an additional disclosure alongside whichever status resolution returned. A skill receiving a status other than subject-specific SHALL disclose that status to the user before presenting a draft. When the status is generic and an include-unresolved or redirect-unresolved disclosure was also produced, the skill SHALL NOT phrase the generic disclosure as there being no rules; it SHALL state both that no rules for this subject were found and that a rule file refers, through an include line or a redirect placeholder, to rules that could not be loaded, naming the target.
+Resolution SHALL return exactly one of three outcome statuses: subject-specific when the subject's core was found, either as a core file at the current location or as a skill packaging the subject's rules, legacy when resolution succeeded through the legacy location or a redirect placeholder, and generic when no subject rules were found at any source the resolution order consults. A problem with an included or imported rule file, or a redirect placeholder that leads nowhere, SHALL NOT add a status; it is reported as an additional disclosure alongside whichever status resolution returned. A skill receiving a status other than subject-specific SHALL disclose that status to the user before presenting a draft. When the status is generic and an include-unresolved or redirect-unresolved disclosure was also produced, the skill SHALL NOT phrase the generic disclosure as there being no rules; it SHALL state both that no rules for this subject were found and that a rule file refers, through an include line or a redirect placeholder, to rules that could not be loaded, naming the target.
 
 #### Scenario: Subject has rules at the current location
 

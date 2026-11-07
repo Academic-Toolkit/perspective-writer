@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How the writing skill is split into a genre-independent core and per-genre facets, and what each part may contain.
+How the writing skill is split into a genre-independent core and per-genre facets: what each part may contain, how the core loads a facet, how the anti-pattern checklist is divided, and why the published contract names sections rather than phase numbers.
 
 ## Requirements
 

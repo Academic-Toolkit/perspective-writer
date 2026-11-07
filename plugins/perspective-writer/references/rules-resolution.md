@@ -169,7 +169,7 @@ Resolve returns exactly one of three statuses:
 
 | Status | Meaning | Disclosure obligation |
 | ------ | ------- | --------------------- |
-| **subject-specific** | The subject's core was found at the current location: a core file, or a skill packaging the subject's rules (see **Skill-packaged subject rules**). | none |
+| **subject-specific** | The subject's core was found: a core file at the current location, or a skill packaging the subject's rules (see **Skill-packaged subject rules**). | none |
 | **legacy** | Resolution succeeded through the legacy location or a redirect placeholder. | name the location used; offer migration |
 | **generic** | No subject rules were found at any source the resolution order consults. | state that this subject has no existing rules |
 
