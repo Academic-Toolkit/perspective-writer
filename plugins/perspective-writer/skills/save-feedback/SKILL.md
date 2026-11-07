@@ -6,7 +6,7 @@ description: >
   or when they say "存 feedback" / "save what you learned" / "把這些建議記下來" mid-draft.
   Distinct from draft-learner (which only triggers on file modification).
 argument-hint: (auto-triggered or invoked manually mid-draft)
-allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *), Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Save Feedback
@@ -95,6 +95,18 @@ Skip pure factual corrections (「這個日期錯了」/「拼字錯」)— 那�
 resolve(subject, genre) — 見 references/rules-resolution.md 的 *Resolution order*；不要列目錄
 ```
 
+對 resolve 回傳的每個檔案執行
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1
+```
+
+讀它的 stdout，不讀原始檔。工作區的規則檔可能只是一行 `pw:include`，它代表的規則只出現在展開後的內容裡，
+位於 `pw:source` 標記之間。照這個寫法執行，它正是本 skill 的 `allowed-tools` 允許的形式。以 `pw:disclosure` 開頭的行是揭露，
+不是規則，每一行都告訴使用者。下面〈已有檔 vs 新建〉判斷
+「重複既有 rules」時，比對的是展開後的內容；寫入仍寫工作區的原始檔（見〈persist 只寫工作區〉）。要寫的檔案還不存在時
+（新主題），沒有既有規則可比對，不跑展開（`expand` 對不存在的檔案以結束碼 2 結束）。
+
 ### 命名慣例
 
 - 對特定 recipient 的 rules → `recipient-{name}.md` (e.g. `recipient-tatsuma.md`、`recipient-japanese-elders.md`)
@@ -103,7 +115,7 @@ resolve(subject, genre) — 見 references/rules-resolution.md 的 *Resolution o
 
 ### 已有檔 vs 新建
 
-- 既有檔的 topic 與本次 feedback overlap → Edit 加新 rules,**不重複既有 rules**
+- 既有檔的 topic 與本次 feedback overlap → Edit 加新 rules,**不重複既有 rules**（以上面展開後的內容判斷）
 - 完全新主題 → Write 新檔
 - 不確定 → 詢問 user 哪個 path
 
