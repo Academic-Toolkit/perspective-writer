@@ -100,13 +100,14 @@ a rule specific to this draft's genre belongs in that genre's facet.
 Before adding a rule, read what the target file already says, expanded: run
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file> 2><disclosures-file>
+${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1
 ```
 
 on it and read its stdout (*Resolution order* in the contract). A workspace file that is mostly a
 `pw:include` line shows only that comment when read raw, so a rule the included plugin already states, or
-contradicts, would go unnoticed. Compare the new rule with the expansion; tell the user every
-`pw:disclosure` line. Write into the raw workspace file, as the next section says. A target that does not
+contradicts, would go unnoticed. Run it exactly in this form, which is what the skill's `allowed-tools`
+permits. Compare the new rule with the expansion; lines that begin with `pw:disclosure` are disclosures, not
+rules, so tell the user each one. Write into the raw workspace file, as the next section says. A target that does not
 exist yet has no rules to compare: skip the expansion (`expand` exits 2 on a missing file).
 
 ### Persist writes only workspace files

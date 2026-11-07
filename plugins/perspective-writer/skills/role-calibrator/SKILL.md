@@ -55,13 +55,13 @@ resolve(subject, genre) — see references/rules-resolution.md, sections *Resolu
 For each file resolve returned, run
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file> 2><disclosures-file>
+${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1
 ```
 
 and read its stdout, not the raw file (*Resolution order* in the contract). A workspace rule file can be
 little more than one `pw:include` line; the rules it stands for appear only in the expansion, between
-`pw:source` markers. Tell the user every `pw:disclosure` line in the disclosures file before proposing
-changes. The role section is still written into the workspace file itself, after any include line (Step 3).
+`pw:source` markers. Run it exactly in this form, which is what the skill's `allowed-tools` permits. Lines that
+begin with `pw:disclosure` are disclosures, not rules: tell the user each one before proposing changes. The role section is still written into the workspace file itself, after any include line (Step 3).
 
 Look for:
 - Blanket deference rules that don't account for domain expertise

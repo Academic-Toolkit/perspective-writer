@@ -774,6 +774,22 @@ case_consistency_check_flags_reader_without_bash_grant() {
   grep -qF 'skills/role-calibrator/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the skill without the grant"
 }
 
+case_consistency_check_flags_invocation_outside_the_grant() {
+  # A grant matches the command text, so `bash "<path>" expand` is not covered by
+  # Bash(<path> *); the step would be blocked in a skill that restricts its tools.
+  new_case consistency_invocation_form
+  local repo="$T/repo" check skill
+  mkdir -p "$repo"
+  cp -R "$ROOT/plugins" "$ROOT/README.md" "$repo/"
+  check="$repo/plugins/perspective-writer/scripts/check-contract-consistency.sh"
+  skill="$repo/plugins/perspective-writer/skills/role-calibrator/SKILL.md"
+  sed 's|^\${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules\.sh expand|bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand|' "$skill" >"$T/rc" && cp "$T/rc" "$skill"
+  grep -qF 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand' "$skill" || fail "test setup: role-calibrator has no invocation to rewrite"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_bad" 2>&1
+  [ $? -eq 1 ] || fail "consistency check did not fail on an invocation the grant does not cover"
+  grep -qF 'skills/role-calibrator/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the skill with the mismatched invocation"
+}
+
 # ---------------------------------------------------------------------------
 # Verify round 2 findings (#25): fence lengths, indented code, plain comments,
 # import onto a directory

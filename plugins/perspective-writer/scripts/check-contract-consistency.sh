@@ -171,9 +171,16 @@ for skill in "$SKILLS"/*/SKILL.md; do
   grep -qE "$EXPAND_RE" "$skill" || unexpanded="$unexpanded$skill"$'\n'
   # A skill that restricts its tools must be allowed to run the script it is told to
   # run; otherwise the expand step is blocked and the skill falls back to the raw file.
+  # A grant matches the command text Claude sends (after ${CLAUDE_PLUGIN_ROOT} is
+  # substituted in both places), so the skill must run the script in exactly the granted
+  # form: no leading `bash`, no quotes around the path.
   tools=$(grep -m1 '^allowed-tools:' "$skill" || true)
-  if [ -n "$tools" ] && ! printf '%s' "$tools" | grep -qF 'Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh'; then
-    ungranted="$ungranted$skill"$'\n'
+  if [ -n "$tools" ]; then
+    if ! printf '%s' "$tools" | grep -qF 'Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *)'; then
+      ungranted="$ungranted$skill"$'\n'
+    elif grep -qE '(bash[[:space:]]+"?\$\{CLAUDE_PLUGIN_ROOT\}|"\$\{CLAUDE_PLUGIN_ROOT\}/scripts/plugin-rules\.sh")' "$skill"; then
+      ungranted="$ungranted$skill"$'\n'
+    fi
   fi
 done
 if [ -n "$unexpanded" ]; then
@@ -186,7 +193,7 @@ fi
 if [ -n "$ungranted" ]; then
   bad "a skill told to run plugin-rules.sh expand restricts its tools without allowing it:"
   printf '%s' "$ungranted" | sed "s|^$ROOT/|    |"
-  note "add Bash(\${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *) to its allowed-tools."
+  note "allow Bash(\${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *) and run the script in that form: \${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1 (no leading bash, no quotes)."
 else
   ok "every skill that expands rules may run plugin-rules.sh"
 fi
