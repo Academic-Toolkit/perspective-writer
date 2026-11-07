@@ -158,6 +158,46 @@ else
   ok "only plugin-rules.sh reads the installed-plugin record"
 fi
 
+# A workspace rule file can be little more than one pw:include line. A skill that reads
+# the raw file sees a comment and none of the rules it stands for, then proposes or
+# writes rules that duplicate or contradict them. Every skill that resolves or persists
+# rules must read them through plugin-rules.sh expand, as Phase 0b of the core skill
+# does (#29).
+READER_RE='Resolution order|resolve\(|\*\*persist\*\*|persist 只寫|Persist writes'
+EXPAND_RE='plugin-rules\.sh"? expand'
+unexpanded=""; ungranted=""
+for skill in "$SKILLS"/*/SKILL.md; do
+  grep -qE "$READER_RE" "$skill" || continue
+  grep -qE "$EXPAND_RE" "$skill" || unexpanded="$unexpanded$skill"$'\n'
+  # A skill that restricts its tools must be allowed to run the script it is told to
+  # run; otherwise the expand step is blocked and the skill falls back to the raw file.
+  # A grant matches the command text Claude sends (after ${CLAUDE_PLUGIN_ROOT} is
+  # substituted in both places), so the skill must run the script in exactly the granted
+  # form: no leading `bash`, no quotes around the path.
+  tools=$(grep -m1 '^allowed-tools:' "$skill" || true)
+  if [ -n "$tools" ]; then
+    if ! printf '%s' "$tools" | grep -qF 'Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *)'; then
+      ungranted="$ungranted$skill"$'\n'
+    elif grep -qE '(bash[[:space:]]+"?\$\{CLAUDE_PLUGIN_ROOT\}|"\$\{CLAUDE_PLUGIN_ROOT\}/scripts/plugin-rules\.sh")' "$skill"; then
+      ungranted="$ungranted$skill"$'\n'
+    fi
+  fi
+done
+if [ -n "$unexpanded" ]; then
+  bad "a skill reads resolved rules without expanding them:"
+  printf '%s' "$unexpanded" | sed "s|^$ROOT/|    |"
+  note "run scripts/plugin-rules.sh expand on each file and read its stdout, as Phase 0b does."
+else
+  ok "every skill that reads resolved rules expands them first"
+fi
+if [ -n "$ungranted" ]; then
+  bad "a skill told to run plugin-rules.sh expand restricts its tools without allowing it:"
+  printf '%s' "$ungranted" | sed "s|^$ROOT/|    |"
+  note "allow Bash(\${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *) and run the script in that form: \${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1 (no leading bash, no quotes)."
+else
+  ok "every skill that expands rules may run plugin-rules.sh"
+fi
+
 # --- 8. The calibrate header carries the additional disclosures --------------
 # An external consumer reads nothing but the calibrate header. If the README's return
 # shape or the skill's Calibrate-draft entry stops specifying `disclosures=`, or the

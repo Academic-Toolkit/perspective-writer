@@ -96,6 +96,15 @@ A copy can be frozen at one version — a submitted document can keep the rules 
 was written under — or edited locally. The header lets resolve tell when the
 source has changed since the copy was made; it never updates the copy.
 
+A source that contains an include line outside code, well formed or not, is **not imported**: import
+refuses it with exit code 2 and asks for an include line instead. Copied, that line
+would become a workspace-level include and be expanded, whereas including the same
+source reports it as `include-nested` and leaves it alone; and the copy's single
+sha256 would not cover the files it includes, so the copy could not be frozen. The
+refusal makes both ways of using such a source give the same result. An include line
+the user adds to a copy afterwards is the workspace's own and expands as usual.
+Copies made before this rule existed are not revisited.
+
 **Where a plugin puts its rules.** A plugin that publishes rules for this plugin
 places them under its own root, mirroring this namespace:
 
@@ -112,6 +121,17 @@ directory once symbolic links are resolved. A path that breaks any of these is
 not read. The `perspective-writer/` prefix is a convention, not a check: any
 Markdown file inside the plugin can be named, which is one more reason to include
 only plugins you trust.
+
+**Other readers.** A file a plugin publishes under `perspective-writer/` is not
+reserved for this plugin. The publishing plugin's own skills may read the same file
+directly, so that one copy serves both; a second copy kept for those skills would
+drift from the one this plugin reads. This plugin takes no part in that other
+reading: it expands nothing for those readers and makes no disclosure on their
+behalf, and `scripts/plugin-rules.sh` is not an interface for other plugins. A
+reader that opens the file directly sees an include line as a one-line comment, not
+as the rules it names, and this plugin does not expand an include line inside an
+included file either (see **Include**). A file meant for both kinds of reader
+therefore contains no include line.
 
 ## Resolution order
 
@@ -271,8 +291,9 @@ the first line.
 
 `import` is performed by `scripts/plugin-rules.sh import plugin:<name>[@<marketplace>]/<path>`
 with `--genre <slug>`, `--subject <slug>`, or both. It writes the same target
-`persist` would choose for that subject and genre, prints the path it wrote, and
-refuses with exit code 4 when that file already exists. Replacing an existing file
+`persist` would choose for that subject and genre, prints the path it wrote,
+refuses with exit code 4 when that file already exists, and refuses with exit code 2
+when the source contains an include line outside code (see **Import** above). Replacing an existing file
 (`--force`) needs the user's explicit consent, because the existing file may hold
 the workspace's own rules.
 

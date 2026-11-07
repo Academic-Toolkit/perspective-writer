@@ -5,7 +5,7 @@ description: >
   diff the changes, extract concrete rules, and persist them to the right rules location. Trigger when you
   detect a file modification system-reminder on a file you recently wrote or edited.
 argument-hint: (auto-triggered from file modification)
-allowed-tools: Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *), Read, Edit, Write, Grep, Glob, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Draft Learner
@@ -95,6 +95,21 @@ cite the contract's *Named resolution contract* and *Storage layout* sections.
 A rule that holds across genres for that subject belongs in the subject's core;
 a rule specific to this draft's genre belongs in that genre's facet.
 
+### Read the target's existing rules expanded
+
+Before adding a rule, read what the target file already says, expanded: run
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1
+```
+
+on it and read its stdout (*Resolution order* in the contract). A workspace file that is mostly a
+`pw:include` line shows only that comment when read raw, so a rule the included plugin already states, or
+contradicts, would go unnoticed. Run it exactly in this form, which is what the skill's `allowed-tools`
+permits. Compare the new rule with the expansion; lines that begin with `pw:disclosure` are disclosures, not
+rules, so tell the user each one. Write into the raw workspace file, as the next section says. A target that does not
+exist yet has no rules to compare: skip the expansion (`expand` exits 2 on a missing file).
+
 ### Persist writes only workspace files
 
 The contract's *Named resolution contract* and *Composition precedence* sections set
@@ -112,7 +127,8 @@ three limits on where the rule is written:
    that header as the first line.
 
 ### If the file exists:
-1. **Read it first** using the `Read` tool.
+1. **Read it first** using the `Read` tool, to edit it. Judge duplicates and contradictions against the
+   expansion from *Read the target's existing rules expanded* above, not against this raw text.
 2. Proceed to Step 4 (update).
 
 ### If the file does NOT exist:

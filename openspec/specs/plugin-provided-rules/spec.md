@@ -85,7 +85,7 @@ The `<path>` of an include or import SHALL be relative, SHALL NOT contain a `..`
 ---
 ### Requirement: Import writes a provenance header and refuses to overwrite
 
-`plugin-rules.sh import` SHALL write the referenced file into the workspace (`genres/<slug>.md` for `--genre`, `subjects/<slug>/core.md` for `--subject`, `subjects/<subject>/<genre>.md` for both), with a first line `<!-- pw:imported plugin:<key> version:<version> path:<path> sha256:<hex> date:<YYYY-MM-DD> -->` followed by the file's content. It SHALL refuse with exit code 4 when the target exists and `--force` is absent, and SHALL print the written path on success.
+`plugin-rules.sh import` SHALL write the referenced file into the workspace (`genres/<slug>.md` for `--genre`, `subjects/<slug>/core.md` for `--subject`, `subjects/<subject>/<genre>.md` for both), with a first line `<!-- pw:imported plugin:<key> version:<version> path:<path> sha256:<hex> date:<YYYY-MM-DD> -->` followed by the file's content. It SHALL refuse with exit code 4 when the target exists and `--force` is absent, and SHALL print the written path on success. It SHALL refuse with exit code 2, writing nothing, when the source file contains an include line outside code (code is a fenced block, or a line indented four spaces or a tab), whether well formed or malformed, and the message SHALL name the source and suggest including it instead; an include line inside code does not cause a refusal. This check SHALL run before the target is examined, so it applies even when the target exists or `--force` is given. Copies imported before this rule existed are not revisited.
 
 #### Scenario: Import a genre file
 
@@ -96,6 +96,16 @@ The `<path>` of an include or import SHALL be relative, SHALL NOT contain a `..`
 
 - **WHEN** the target file exists and `--force` is not given
 - **THEN** the file is unchanged and the exit code is 4
+
+#### Scenario: Source contains an include line
+
+- **WHEN** `import plugin:tools@a/genres/x.md --genre x` runs and `genres/x.md` in the plugin contains a `<!-- pw:include plugin:other@b/genres/y.md -->` line outside code
+- **THEN** the exit code is 2, no file is written in the workspace, and the message names the source and suggests including it instead
+
+#### Scenario: Include line only inside code
+
+- **WHEN** the source file contains an include line only inside a fenced code block
+- **THEN** the import succeeds and the copy holds the source content unchanged
 
 ---
 ### Requirement: Stale import is disclosed by comparing the source hash
@@ -158,3 +168,49 @@ Apart from the resolution contract, `plugin-rules.sh` SHALL be the only file in 
 
 - **WHEN** `expand` runs on a file with no include line and no imported header and the record does not exist
 - **THEN** stdout equals the file content and the exit code is 0
+
+---
+### Requirement: Skills that compare against existing rules read them expanded
+
+Every skill that resolves or persists rules SHALL read each file resolve returned, or each target it will write, through `plugin-rules.sh expand`, and SHALL compare, deduplicate and propose rules against that expansion rather than the raw file. It SHALL tell the user every additional disclosure the expansion produced. A target that does not exist yet has no rules to compare and is not expanded. Writing SHALL still go to the raw workspace file, after any include line. A skill that restricts its tools SHALL allow `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh *)` and SHALL run the script in that form, `${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh expand <file> 2>&1`, with no leading `bash` and no quotes around the path, because a Bash permission rule matches the command text. The consistency check SHALL fail when a skill that refers to the resolve or persist operation (it names the contract's *Resolution order*, `resolve(`, **persist**, or the persist-limits heading) does not mention `plugin-rules.sh expand`, or restricts its tools without allowing that script.
+
+#### Scenario: Workspace file is a single include line
+
+- **WHEN** save-feedback is about to add a rule to a workspace genre file whose only content is an include line for a plugin rule that already states the same rule
+- **THEN** it reads the expansion, finds the rule between the `pw:source` markers, and does not add a duplicate
+
+#### Scenario: A rule-reading skill stops expanding
+
+- **WHEN** a skill that mentions resolve or persist no longer mentions `plugin-rules.sh expand`
+- **THEN** `check-contract-consistency.sh` exits 1 and names that skill's file
+
+---
+### Requirement: A plugin's published rule files are not reserved for this plugin
+
+The resolution contract SHALL state that a file a plugin publishes under `perspective-writer/` may also be read directly by that plugin's own skills, so that one copy serves both readers. It SHALL state that perspective-writer expands nothing and discloses nothing for those other readers, that `plugin-rules.sh` is not an interface for other plugins, and that a file meant for both kinds of reader contains no include line.
+
+#### Scenario: A plugin's own skill reads its published genre file
+
+- **WHEN** a plugin publishes `perspective-writer/genres/<slug>.md` and one of its own skills reads that file directly
+- **THEN** the contract permits it, and the plugin keeps no second copy for its own skills
+
+#### Scenario: A shared file contains an include line
+
+- **WHEN** a maintainer reads the contract to decide whether a file read by both the plugin's skills and perspective-writer may contain an include line
+- **THEN** the contract states that such a file contains no include line, because a direct reader sees the line as a comment and perspective-writer does not expand an include line inside an included file
+
+#### Scenario: Another plugin's skill wants expanded rules
+
+- **WHEN** a maintainer reads the contract to learn whether another plugin's skill may call `plugin-rules.sh expand`
+- **THEN** the contract says the script is not an interface for other plugins and perspective-writer makes no disclosure on their behalf
+
+<!-- @trace
+source: plugin-rules-other-readers
+updated: 2026-11-08
+code:
+  - .claude-plugin/marketplace.json
+  - README.md
+  - plugins/perspective-writer/CHANGELOG.md
+  - plugins/perspective-writer/.claude-plugin/plugin.json
+  - plugins/perspective-writer/references/rules-resolution.md
+-->

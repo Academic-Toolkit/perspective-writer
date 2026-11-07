@@ -744,6 +744,52 @@ case_consistency_check_flags_record_reader() {
   grep -qF 'skills/role-calibrator/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the offending file"
 }
 
+case_consistency_check_flags_unexpanded_reader() {
+  new_case consistency_unexpanded
+  local repo="$T/repo" check skill
+  mkdir -p "$repo"
+  cp -R "$ROOT/plugins" "$ROOT/README.md" "$repo/"
+  check="$repo/plugins/perspective-writer/scripts/check-contract-consistency.sh"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_clean" 2>&1
+  [ $? -eq 0 ] || fail "consistency check fails on a clean copy: $(tail -3 "$T/cc_clean")"
+  skill="$repo/plugins/perspective-writer/skills/save-feedback/SKILL.md"
+  sed 's/plugin-rules\.sh" expand/plugin-rules.sh" read/g; s/plugin-rules\.sh expand/plugin-rules.sh read/g' "$skill" >"$T/sf" && cp "$T/sf" "$skill"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_bad" 2>&1
+  [ $? -eq 1 ] || fail "consistency check did not fail when a rule-reading skill stops expanding"
+  grep -qF 'skills/save-feedback/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the unexpanded skill"
+}
+
+case_consistency_check_flags_reader_without_bash_grant() {
+  new_case consistency_bash_grant
+  local repo="$T/repo" check skill
+  mkdir -p "$repo"
+  cp -R "$ROOT/plugins" "$ROOT/README.md" "$repo/"
+  check="$repo/plugins/perspective-writer/scripts/check-contract-consistency.sh"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_clean" 2>&1
+  [ $? -eq 0 ] || fail "consistency check fails on a clean copy: $(tail -3 "$T/cc_clean")"
+  skill="$repo/plugins/perspective-writer/skills/role-calibrator/SKILL.md"
+  sed 's/Bash(\${CLAUDE_PLUGIN_ROOT}\/scripts\/plugin-rules\.sh \*), //' "$skill" >"$T/rc" && cp "$T/rc" "$skill"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_bad" 2>&1
+  [ $? -eq 1 ] || fail "consistency check did not fail when a rule-reading skill cannot run plugin-rules.sh"
+  grep -qF 'skills/role-calibrator/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the skill without the grant"
+}
+
+case_consistency_check_flags_invocation_outside_the_grant() {
+  # A grant matches the command text, so `bash "<path>" expand` is not covered by
+  # Bash(<path> *); the step would be blocked in a skill that restricts its tools.
+  new_case consistency_invocation_form
+  local repo="$T/repo" check skill
+  mkdir -p "$repo"
+  cp -R "$ROOT/plugins" "$ROOT/README.md" "$repo/"
+  check="$repo/plugins/perspective-writer/scripts/check-contract-consistency.sh"
+  skill="$repo/plugins/perspective-writer/skills/role-calibrator/SKILL.md"
+  sed 's|^\${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules\.sh expand|bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand|' "$skill" >"$T/rc" && cp "$T/rc" "$skill"
+  grep -qF 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand' "$skill" || fail "test setup: role-calibrator has no invocation to rewrite"
+  "${PW_TEST_BASH:-bash}" "$check" "$repo" >"$T/cc_bad" 2>&1
+  [ $? -eq 1 ] || fail "consistency check did not fail on an invocation the grant does not cover"
+  grep -qF 'skills/role-calibrator/SKILL.md' "$T/cc_bad" || fail "consistency check did not name the skill with the mismatched invocation"
+}
+
 # ---------------------------------------------------------------------------
 # #27: the calibrate header carries the additional disclosures. The model's output
 # cannot be tested, so these check that the consistency check notices when the
@@ -903,6 +949,73 @@ case_usage_errors() {
   expect_rc 2
   run frobnicate x
   expect_rc 2
+}
+
+# 2.6 (#28) Import refuses a source that contains an include line outside code
+
+case_import_refuses_source_with_include() {
+  new_case import_refuses_include
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n%s\n' "$(include other@b/genres/y.md)")"
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 2
+  expect_err_has "plugin:tools@a/genres/x.md"
+  expect_err_has "include"
+  [ ! -e "$WS/genres/x.md" ] || fail "import wrote a copy of a source that contains an include line"
+}
+
+case_import_refuses_source_with_malformed_include() {
+  new_case import_refuses_malformed
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" $'X rules.\n<!-- pw:include other@b/genres/y.md -->\n'
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 2
+  expect_err_has "plugin:tools@a/genres/x.md"
+  expect_err_has "include it from the workspace"
+  [ ! -e "$WS/genres/x.md" ] || fail "import wrote a copy of a source that contains a malformed include line"
+}
+
+case_import_refuses_include_indented_up_to_three_spaces() {
+  new_case import_refuses_shallow_indent
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n   %s\n' "$(include other@b/genres/y.md)")"
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 2
+  [ ! -e "$WS/genres/x.md" ] || fail "an include line indented three spaces is not code and must be refused"
+}
+
+case_import_allows_include_in_indented_code() {
+  new_case import_include_indented_code
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n\n    %s\n' "$(include other@b/genres/y.md)")"
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 0
+  check_imported_copy "$WS/genres/x.md" "$PDIR/genres/x.md" tools@a 1.2.0 genres/x.md
+}
+
+case_import_include_refusal_precedes_target_exists() {
+  new_case import_refusal_order
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n%s\n' "$(include other@b/genres/y.md)")"
+  write_record
+  file "$WS/genres/x.md" $'local rules\n'
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS" --force
+  expect_rc 2
+  [ "$(cat "$WS/genres/x.md")" = "local rules" ] || fail "a refused import with --force changed the existing target"
+}
+
+case_import_allows_include_inside_code() {
+  new_case import_include_in_code
+  plugin tools@a 1.2.0
+  file "$PDIR/genres/x.md" "$(printf 'X rules.\n\n```markdown\n%s\n```\n' "$(include other@b/genres/y.md)")"
+  write_record
+  run import "plugin:tools@a/genres/x.md" --genre x --workspace "$WS"
+  expect_rc 0
+  check_imported_copy "$WS/genres/x.md" "$PDIR/genres/x.md" tools@a 1.2.0 genres/x.md
 }
 
 # ---------------------------------------------------------------------------
