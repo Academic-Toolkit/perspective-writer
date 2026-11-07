@@ -95,6 +95,16 @@ Skip pure factual corrections (「這個日期錯了」/「拼字錯」)— 那�
 resolve(subject, genre) — 見 references/rules-resolution.md 的 *Resolution order*；不要列目錄
 ```
 
+對 resolve 回傳的每個檔案執行
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file> 2><disclosures-file>
+```
+
+讀它的 stdout，不讀原始檔。工作區的規則檔可能只是一行 `pw:include`，它代表的規則只出現在展開後的內容裡，
+位於 `pw:source` 標記之間。disclosures 檔裡的每一行 `pw:disclosure` 都告訴使用者。下面〈已有檔 vs 新建〉判斷
+「重複既有 rules」時，比對的是展開後的內容；寫入仍寫工作區的原始檔（見〈persist 只寫工作區〉）。
+
 ### 命名慣例
 
 - 對特定 recipient 的 rules → `recipient-{name}.md` (e.g. `recipient-tatsuma.md`、`recipient-japanese-elders.md`)

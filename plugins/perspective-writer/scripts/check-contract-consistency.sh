@@ -158,6 +158,26 @@ else
   ok "only plugin-rules.sh reads the installed-plugin record"
 fi
 
+# A workspace rule file can be little more than one pw:include line. A skill that reads
+# the raw file sees a comment and none of the rules it stands for, then proposes or
+# writes rules that duplicate or contradict them. Every skill that resolves or persists
+# rules must read them through plugin-rules.sh expand, as Phase 0b of the core skill
+# does (#29).
+READER_RE='Resolution order|resolve\(|\*\*persist\*\*|persist 只寫|Persist writes'
+EXPAND_RE='plugin-rules\.sh"? expand'
+unexpanded=""
+for skill in "$SKILLS"/*/SKILL.md; do
+  grep -qE "$READER_RE" "$skill" || continue
+  grep -qE "$EXPAND_RE" "$skill" || unexpanded="$unexpanded$skill"$'\n'
+done
+if [ -n "$unexpanded" ]; then
+  bad "a skill reads resolved rules without expanding them:"
+  printf '%s' "$unexpanded" | sed "s|^$ROOT/|    |"
+  note "run scripts/plugin-rules.sh expand on each file and read its stdout, as Phase 0b does."
+else
+  ok "every skill that reads resolved rules expands them first"
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "contract consistency: OK"

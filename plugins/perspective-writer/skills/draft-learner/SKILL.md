@@ -95,6 +95,19 @@ cite the contract's *Named resolution contract* and *Storage layout* sections.
 A rule that holds across genres for that subject belongs in the subject's core;
 a rule specific to this draft's genre belongs in that genre's facet.
 
+### Read the target's existing rules expanded
+
+Before adding a rule, read what the target file already says, expanded: run
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-rules.sh" expand <file> 2><disclosures-file>
+```
+
+on it and read its stdout (*Resolution order* in the contract). A workspace file that is mostly a
+`pw:include` line shows only that comment when read raw, so a rule the included plugin already states, or
+contradicts, would go unnoticed. Compare the new rule with the expansion; tell the user every
+`pw:disclosure` line. Write into the raw workspace file, as the next section says.
+
 ### Persist writes only workspace files
 
 The contract's *Named resolution contract* and *Composition precedence* sections set
