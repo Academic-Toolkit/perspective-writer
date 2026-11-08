@@ -200,7 +200,7 @@ DRAFT>>>
 
    | Status | Meaning |
    |---|---|
-   | `subject-specific` | the subject's core was found at the current location |
+   | `subject-specific` | the subject's core was found: a core file at the current location, or a skill packaging the subject's rules |
    | `legacy` | resolution succeeded through the legacy path or a redirect placeholder |
    | `generic` | no subject rules were found at any source the resolution order consults |
 

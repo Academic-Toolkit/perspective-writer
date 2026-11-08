@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.13.1] - 2026-11-08
+
+### Fixed
+
+- The README consumer contract's status table defines `subject-specific` as the resolution contract does: a core file at the current location, or a skill packaging the subject's rules. It had named only the first, so a consumer reading the README alone got a narrower meaning (#26).
+
 ## [4.13.0] - 2026-11-08
 
 ### Added
